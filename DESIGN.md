@@ -24,7 +24,7 @@ Use Inter for UI and JetBrains Mono for numeric labels, prices, score gaps, and 
 - Plain-language JND explanation tied to the selected threshold and benchmark frontier score.
 - Benchmark guide cards with task description, example question shape, and source scope.
 - Analysis universe section showing observation rows, unique model count, source mix, and included model lists.
-- Selected benchmark evidence ladder comparing cheap candidates against the frontier anchor.
+- Artificial Analysis-style substitution curve: benchmark-selected score bars sorted by input price, with direct score labels and a visible JND cutoff line.
 - Threshold sensitivity matrix for 1, 3, and 5 point JND bands.
 
 ## Accessibility

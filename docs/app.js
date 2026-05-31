@@ -330,17 +330,19 @@ function renderBenchmarkSelect() {
   };
 }
 
-function renderLadderSummary() {
+function renderCurveSummary() {
   const status = substitutionStatus(state.benchmark);
   const floor = status.floor;
   const frontier = status.frontier;
   const multiple = savingsMultiple(floor, frontier);
+  const cutoff = frontier ? frontier.frontier_score - state.threshold : null;
+  const rows = pricedRows(state.benchmark);
   const cards = [
-    { label: 'Cheapest in band', value: floor ? dollars(floor.input_price_per_m) : 'none', copy: floor ? shortModel(floor.model) : 'No candidate' },
-    { label: 'Score gap', value: floor ? points(floor.score_gap) : 'none', copy: `${state.threshold} pt band selected` },
-    { label: 'Price delta', value: multiple && multiple > 1.05 ? `${multiple.toFixed(multiple >= 10 ? 0 : 1)}×` : '0×', copy: frontier ? `Frontier: ${shortModel(frontier.model)}` : 'No frontier row' },
+    { label: 'Chart order', value: 'Cheap → costly', copy: `${rows.length} priced models shown` },
+    { label: 'JND cutoff', value: cutoff !== null ? `≥${pct(cutoff)}` : 'none', copy: `${state.threshold} pts below frontier qualifies` },
+    { label: 'Cheapest in band', value: floor ? dollars(floor.input_price_per_m) : 'none', copy: floor ? `${shortModel(floor.model)}${multiple && multiple > 1.05 ? ` · ${multiple.toFixed(multiple >= 10 ? 0 : 1)}× cheaper` : ''}` : 'No candidate' },
   ];
-  document.getElementById('ladder-summary').innerHTML = cards.map((card) => `
+  document.getElementById('curve-summary').innerHTML = cards.map((card) => `
     <article class="summary-card">
       <span class="label">${escapeHtml(card.label)}</span>
       <strong>${escapeHtml(card.value)}</strong>
@@ -349,34 +351,51 @@ function renderLadderSummary() {
   `).join('');
 }
 
-function renderEvidenceLadder() {
+function renderSubstitutionCurve() {
   const rows = pricedRows(state.benchmark).slice().sort((a, b) => a.input_price_per_m - b.input_price_per_m || b.score - a.score);
-  const maxGap = Math.max(state.threshold * 2.2, ...rows.map((row) => row.score_gap), 1);
-  const bandWidth = Math.min(100, (state.threshold / maxGap) * 100);
   const frontier = frontierRow(state.benchmark);
-  const scale = (gap) => Math.min(100, Math.max(0, (gap / maxGap) * 100));
+  const cutoff = frontier ? frontier.frontier_score - state.threshold : 0;
+  const minScore = Math.min(...rows.map((row) => row.score), cutoff);
+  const domainMin = Math.max(0, Math.floor((minScore - 5) / 5) * 5);
+  const scaleScore = (score) => Math.max(0, Math.min(100, ((score - domainMin) / (100 - domainMin)) * 100));
+  const cutoffLeft = scaleScore(cutoff);
+  const cheapest = cheapestEquivalent(state.benchmark);
 
-  const ladderRows = rows.map((row) => {
+  const bars = rows.map((row, index) => {
     const ok = equivalent(row);
     const isFrontier = row.model === frontier?.model;
+    const isFloor = row.model === cheapest?.model;
+    const tone = isFrontier ? 'frontier' : ok ? 'in-band' : 'out-band';
     return `
-      <article class="ladder-row ${ok ? 'in-band' : ''} ${isFrontier ? 'frontier' : ''}">
-        <div class="model-cell">
+      <article class="curve-row ${tone} ${isFloor ? 'floor' : ''}">
+        <div class="curve-rank">${index + 1}</div>
+        <div class="curve-model">
           <strong title="${escapeHtml(row.model)}">${escapeHtml(shortModel(row.model))}</strong>
-          <span>${dollars(row.input_price_per_m)} · ${pct(row.score)} score</span>
+          <span>${dollars(row.input_price_per_m)} input · ${points(row.score_gap)} gap</span>
         </div>
-        <div class="gap-track" aria-label="${escapeHtml(row.model)} score gap ${points(row.score_gap)}">
-          <span class="gap-band" style="width: ${bandWidth}%"></span>
-          <span class="gap-marker ${ok ? 'in-band' : ''} ${isFrontier ? 'frontier' : ''}" style="left: ${scale(row.score_gap)}%"></span>
+        <div class="curve-bar-wrap" aria-label="${escapeHtml(row.model)} score ${pct(row.score)} cutoff ${pct(cutoff)}">
+          <span class="curve-jnd-zone" style="left:${cutoffLeft}%"></span>
+          <span class="curve-cutoff ${cutoffLeft > 80 ? 'label-left' : ''}" style="left:${cutoffLeft}%"><span>${pct(cutoff)} cutoff</span></span>
+          <span class="curve-bar" style="width:${scaleScore(row.score)}%"></span>
         </div>
-        <div class="gap-value">${points(row.score_gap)}</div>
+        <div class="curve-score">
+          <strong>${pct(row.score)}</strong>
+          <span class="chip ${ok ? 'green' : 'red'}">${isFrontier ? 'Frontier' : isFloor ? 'Floor' : ok ? 'In band' : 'Below band'}</span>
+        </div>
       </article>
     `;
   }).join('');
 
-  document.getElementById('evidence-ladder').innerHTML = `
-    <div class="ladder-scale"><span>model</span><span>green zone: inside ${state.threshold} pts</span><span>gap</span></div>
-    ${ladderRows}
+  document.getElementById('substitution-curve').innerHTML = `
+    <div class="curve-toolbar">
+      <div class="chip-row">
+        <span class="chip mono">${rows.length} of ${rows.length} models</span>
+        <span class="chip violet">zoomed ${pct(domainMin, 0)}–100%</span>
+        <span class="chip green">green = substitute</span>
+      </div>
+      <div class="curve-axis"><span>${pct(domainMin, 0)}</span><span>Benchmark score</span><span>100%</span></div>
+    </div>
+    <div class="curve-list">${bars}</div>
   `;
 }
 
@@ -440,8 +459,8 @@ function renderModelUniverse() {
 }
 
 function renderSelectedBenchmark() {
-  renderLadderSummary();
-  renderEvidenceLadder();
+  renderCurveSummary();
+  renderSubstitutionCurve();
   renderObservationCards();
 }
 
