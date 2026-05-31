@@ -44,6 +44,23 @@ Three economics/psychology frameworks map onto this benchmark:
 
 ## Metrics & Aggregation Structure
 
+### MVP Artifacts
+
+Current MVP data/plot generator:
+
+```bash
+python -m pytest tests -q
+python scripts/build_mvp_metrics.py
+```
+
+Generated outputs:
+
+- `data/mvp_metrics.csv` — per-model benchmark rows with Frontier Coverage %, score gap, and JND-equivalent flag.
+- `data/mvp_substitution_floors.csv` — cheapest/smallest frontier-equivalent model per benchmark at configured thresholds.
+- `data/mvp_threshold_sensitivity.csv` — substitution floor recomputed at 1/3/5 percentage-point JND thresholds.
+- `reports/mvp-metrics.md` — human-readable MVP summary.
+- `reports/plots/*.svg` — static SVG substitution curves and cheapest-equivalent summary.
+
 ### Top-Level: Frontier Coverage %
 
 What percentage of the tested task space can a given model handle at frontier quality? A 7B model might cover 45%. A 70B model might cover 78%. The frontier reference model is 100% by definition.

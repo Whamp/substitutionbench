@@ -1,0 +1,4 @@
+benchmark,jnd_points,frontier_model,frontier_score,benchmark_kind,notes
+MATH-500,3.0,GPT-5 high,99.4,saturated,Use 3 percentage-point JND band for MVP; frontier row predates GPT-5.5 data gap.
+GPQA Diamond,3.0,Gemini 3.1 Pro Preview,94.1,near_saturated,Use observed top score as benchmark frontier ceiling; GPT-5.5 xhigh is 93.5.
+SWE-bench Verified,3.0,Claude Opus 4.8,88.6,unsaturated,Complementary benchmark showing where frontier still buys capability.

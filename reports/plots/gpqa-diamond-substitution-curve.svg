@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="520" viewBox="0 0 980 520">
+  <style>text { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif; fill: #111827; } .axis { stroke: #374151; stroke-width: 1.2; } .grid { stroke: #e5e7eb; stroke-width: 1; } .band { fill: #dcfce7; opacity: .8; }</style>
+  <rect width="100%" height="100%" fill="#ffffff"/>
+  <text x="490.0" y="26" text-anchor="middle" font-size="20" font-weight="700">GPQA Diamond substitution curve</text>
+  <rect class="band" x="80" y="45" width="860" height="79.2"/>
+  <line class="grid" x1="80" x2="940" y1="63.9" y2="63.9"/>
+  <line class="grid" x1="80" x2="940" y1="124.2" y2="124.2" stroke-dasharray="5 5"/>
+  <line class="axis" x1="80" y1="440" x2="940" y2="440"/>
+  <line class="axis" x1="80" y1="45" x2="80" y2="440"/>
+  <polyline points="80.0,158.3 83.8,232.6 111.7,198.5 131.2,160.3 168.0,383.3 282.1,98.1 413.7,63.9 940.0,76.0 940.0,82.0 940.0,120.1" fill="none" stroke="#2563eb" stroke-width="2"/>
+  <circle cx="80.0" cy="158.3" r="6" fill="#dc2626"><title>DeepSeek V4 Flash: 95.0% coverage, $0.0983/M input</title></circle><circle cx="83.8" cy="232.6" r="6" fill="#dc2626"><title>Gemma 4 31B: 91.1% coverage, $0.12/M input</title></circle><circle cx="111.7" cy="198.5" r="6" fill="#dc2626"><title>MiniMax M2.7: 92.9% coverage, $0.279/M input</title></circle><circle cx="131.2" cy="160.3" r="6" fill="#dc2626"><title>Qwen3.5 397B A17B: 94.9% coverage, $0.39/M input</title></circle><circle cx="168.0" cy="383.3" r="6" fill="#dc2626"><title>GLM 4.5 Thinking: 83.1% coverage, $0.6/M input</title></circle><circle cx="282.1" cy="98.1" r="6" fill="#16a34a"><title>Qwen3.7 Max: 98.2% coverage, $1.25/M input</title></circle><circle cx="413.7" cy="63.9" r="6" fill="#16a34a"><title>Gemini 3.1 Pro Preview: 100.0% coverage, $2.0/M input</title></circle><circle cx="940.0" cy="76.0" r="6" fill="#16a34a"><title>GPT-5.5 xhigh: 99.4% coverage, $5.0/M input</title></circle><circle cx="940.0" cy="82.0" r="6" fill="#16a34a"><title>GPT-5.5 high: 99.0% coverage, $5.0/M input</title></circle><circle cx="940.0" cy="120.1" r="6" fill="#16a34a"><title>Claude Opus 4.6 Max: 97.0% coverage, $5.0/M input</title></circle>
+  <text x="168.0" y="373.3" font-size="11" text-anchor="middle">GLM 4.5 Thinking</text><text x="282.1" y="88.1" font-size="11" text-anchor="middle">Qwen3.7 Max</text><text x="940.0" y="66.0" font-size="11" text-anchor="middle">GPT-5.5 xhigh</text><text x="940.0" y="72.0" font-size="11" text-anchor="middle">GPT-5.5 high</text><text x="940.0" y="110.1" font-size="11" text-anchor="middle">Claude Opus 4.6 Max</text>
+  <text x="490.0" y="492" text-anchor="middle" font-size="14">Input price ($ / 1M tokens), sorted cheapest → frontier</text>
+  <text x="20" y="260.0" transform="rotate(-90 20 260.0)" text-anchor="middle" font-size="14">Frontier coverage (%)</text>
+  <text x="932" y="432" font-size="12" text-anchor="end">Green band = within JND threshold (3 points)</text>
+</svg>

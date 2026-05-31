@@ -1,0 +1,39 @@
+benchmark,domain,model,score,frontier_score,frontier_coverage,score_gap,jnd_points,jnd_equivalent,input_price_per_m,output_price_per_m,total_params_b,active_params_b,eval_mode,source_quality,source_url
+MATH-500,Math,GPT-5 high,99.400,99.400,100.000,0.000,3.000,true,1.25,10.0,,,high,aggregator,https://pricepertoken.com/leaderboards/benchmark/math-500
+MATH-500,Math,o3,99.200,99.400,99.799,0.200,3.000,true,2.0,8.0,,,reasoning,aggregator,https://pricepertoken.com/leaderboards/benchmark/math-500
+MATH-500,Math,Grok 3 Mini high,99.200,99.400,99.799,0.200,3.000,true,0.25,0.5,,,high,aggregator,https://pricepertoken.com/leaderboards/benchmark/math-500
+MATH-500,Math,Claude Sonnet 4 Thinking,99.100,99.400,99.698,0.300,3.000,true,3.0,15.0,,,thinking,aggregator,https://pricepertoken.com/leaderboards/benchmark/math-500
+MATH-500,Math,o4 Mini,98.900,99.400,99.497,0.500,3.000,true,0.55,2.2,,,reasoning,aggregator,https://pricepertoken.com/leaderboards/benchmark/math-500
+MATH-500,Math,Qwen3 235B A22B Thinking,98.400,99.400,98.994,1.000,3.000,true,0.149,0.9,235.0,22.0,thinking,aggregator,https://pricepertoken.com/leaderboards/benchmark/math-500
+MATH-500,Math,Llama 3.3 Nemotron Super 49B Thinking,98.300,99.400,98.893,1.100,3.000,true,0.1,0.4,49.0,,thinking,aggregator,https://pricepertoken.com/leaderboards/benchmark/math-500
+MATH-500,Math,Claude Opus 4 Thinking,98.200,99.400,98.793,1.200,3.000,true,15.0,75.0,,,thinking,aggregator,https://pricepertoken.com/leaderboards/benchmark/math-500
+MATH-500,Math,Gemini 2.5 Flash Thinking,98.100,99.400,98.692,1.300,3.000,true,0.3,2.5,,,thinking,aggregator,https://pricepertoken.com/leaderboards/benchmark/math-500
+MATH-500,Math,GLM 4.5 Thinking,97.900,99.400,98.491,1.500,3.000,true,0.6,2.2,,,thinking,aggregator,https://pricepertoken.com/leaderboards/benchmark/math-500
+MATH-500,Math,Qwen3 30B A3B Thinking,97.600,99.400,98.189,1.800,3.000,true,0.08,0.4,30.0,3.0,thinking,aggregator,https://pricepertoken.com/leaderboards/benchmark/math-500
+MATH-500,Math,Qwen3 14B Thinking,96.100,99.400,96.680,3.300,3.000,false,0.08,0.2,14.0,,thinking,aggregator,https://pricepertoken.com/leaderboards/benchmark/math-500
+MATH-500,Math,Claude Sonnet 4 non-thinking,93.400,99.400,93.964,6.000,3.000,false,3.0,15.0,,,non-thinking,aggregator,https://pricepertoken.com/leaderboards/benchmark/math-500
+MATH-500,Math,DeepSeek V4 Flash,92.800,99.400,93.360,6.600,3.000,false,0.0983,0.1966,284.0,13.0,xhigh,provider,https://openrouter.ai/deepseek/deepseek-v4-flash/benchmarks
+MATH-500,Math,GPT-4.1 Mini,92.500,99.400,93.058,6.900,3.000,false,0.4,1.6,,,standard,aggregator,https://pricepertoken.com/leaderboards/benchmark/math-500
+MATH-500,Math,Gemini 2.0 Flash,93.000,99.400,93.561,6.400,3.000,false,0.1,0.4,,,standard,aggregator,https://pricepertoken.com/leaderboards/benchmark/math-500
+MATH-500,Math,DeepSeek V4 Flash HF card,60.500,99.400,60.865,38.900,3.000,false,0.0983,0.1966,284.0,13.0,non-thinking,vendor,https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash
+GPQA Diamond,Science,Gemini 3.1 Pro Preview,94.100,94.100,100.000,0.000,3.000,true,2.0,12.0,,,standard,independent,https://artificialanalysis.ai/evaluations/gpqa-diamond
+GPQA Diamond,Science,GPT-5.5 xhigh,93.500,94.100,99.362,0.600,3.000,true,5.0,30.0,,,xhigh,independent,https://artificialanalysis.ai/evaluations/gpqa-diamond
+GPQA Diamond,Science,GPT-5.5 high,93.200,94.100,99.044,0.900,3.000,true,5.0,30.0,,,high,independent,https://artificialanalysis.ai/evaluations/gpqa-diamond
+GPQA Diamond,Science,Qwen3.7 Max,92.400,94.100,98.193,1.700,3.000,true,1.25,3.75,,,xhigh,vendor,https://qwen.ai/blog?id=qwen3.7
+GPQA Diamond,Science,Claude Opus 4.6 Max,91.300,94.100,97.024,2.800,3.000,true,5.0,25.0,,,max,vendor,https://www.anthropic.com/news/claude-4
+GPQA Diamond,Science,DeepSeek V4 Flash,89.400,94.100,95.005,4.700,3.000,false,0.0983,0.1966,284.0,13.0,reasoning,aggregator,https://pricepertoken.com/leaderboards/benchmark/gpqa-diamond
+GPQA Diamond,Science,Qwen3.5 397B A17B,89.300,94.100,94.899,4.800,3.000,false,0.39,0.9,397.0,17.0,unknown,aggregator,https://pricepertoken.com/leaderboards/benchmark/gpqa-diamond
+GPQA Diamond,Science,MiniMax M2.7,87.400,94.100,92.880,6.700,3.000,false,0.279,1.2,230.0,,unknown,aggregator,https://pricepertoken.com/pricing-page/model/minimax-minimax-m2.7
+GPQA Diamond,Science,Gemma 4 31B,85.700,94.100,91.073,8.400,3.000,false,0.12,0.37,31.0,,standard,aggregator,https://pricepertoken.com/leaderboards/benchmark/gpqa-diamond
+GPQA Diamond,Science,Qwen3.5 27B,85.500,94.100,90.861,8.600,3.000,false,,,27.0,,unknown,vendor,https://huggingface.co/blog/gemma4
+GPQA Diamond,Science,Qwen3.5 35B A3B,84.200,94.100,89.479,9.900,3.000,false,,,35.0,3.0,unknown,vendor,https://huggingface.co/blog/gemma4
+GPQA Diamond,Science,Gemma 4 26B A4B,82.300,94.100,87.460,11.800,3.000,false,,,26.0,4.0,standard,vendor,https://huggingface.co/blog/gemma4
+GPQA Diamond,Science,GLM 4.5 Thinking,78.200,94.100,83.103,15.900,3.000,false,0.6,2.2,,,thinking,aggregator,https://designforonline.com/ai-models/z-ai-glm-4-5/
+GPQA Diamond,Science,Qwen3.5 4B,76.200,94.100,80.978,17.900,3.000,false,,,4.0,,unknown,vendor,https://huggingface.co/blog/gemma4
+SWE-bench Verified,Coding,Claude Opus 4.8,88.600,88.600,100.000,0.000,3.000,true,5.0,25.0,,,max,independent,https://www.vals.ai/benchmarks/swebench
+SWE-bench Verified,Coding,GPT-5.5,82.600,88.600,93.228,6.000,3.000,false,5.0,30.0,,,default,independent,https://www.vals.ai/benchmarks/swebench
+SWE-bench Verified,Coding,Claude Opus 4.7,82.000,88.600,92.551,6.600,3.000,false,5.0,25.0,,,max,independent,https://www.vals.ai/benchmarks/swebench
+SWE-bench Verified,Coding,Gemini 3.5 Flash,78.800,88.600,88.939,9.800,3.000,false,1.5,9.0,,,default,independent,https://www.vals.ai/benchmarks/swebench
+SWE-bench Verified,Coding,GPT-5.4,78.200,88.600,88.262,10.400,3.000,false,2.5,15.0,,,default,independent,https://www.vals.ai/benchmarks/swebench
+SWE-bench Verified,Coding,GPT-5.3 Codex,78.000,88.600,88.036,10.600,3.000,false,1.75,14.0,,,default,independent,https://www.vals.ai/benchmarks/swebench
+SWE-bench Verified,Coding,DeepSeek V4,77.400,88.600,87.359,11.200,3.000,false,0.44,,1600.0,49.0,default,independent,https://www.vals.ai/benchmarks/swebench

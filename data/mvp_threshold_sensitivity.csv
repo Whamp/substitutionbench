@@ -1,0 +1,10 @@
+benchmark,threshold_points,equivalent_models,cheapest_equivalent_model,cheapest_input_price_per_m,smallest_equivalent_model,smallest_params_b
+GPQA Diamond,1.0,3,Gemini 3.1 Pro Preview,2.0,,
+GPQA Diamond,3.0,5,Qwen3.7 Max,1.25,,
+GPQA Diamond,5.0,7,DeepSeek V4 Flash,0.0983,DeepSeek V4 Flash,13.0
+MATH-500,1.0,6,Qwen3 235B A22B Thinking,0.149,Qwen3 235B A22B Thinking,22.0
+MATH-500,3.0,11,Qwen3 30B A3B Thinking,0.08,Qwen3 30B A3B Thinking,3.0
+MATH-500,5.0,12,Qwen3 30B A3B Thinking,0.08,Qwen3 30B A3B Thinking,3.0
+SWE-bench Verified,1.0,1,Claude Opus 4.8,5.0,,
+SWE-bench Verified,3.0,1,Claude Opus 4.8,5.0,,
+SWE-bench Verified,5.0,1,Claude Opus 4.8,5.0,,

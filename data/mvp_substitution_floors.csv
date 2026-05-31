@@ -1,0 +1,4 @@
+benchmark,frontier_score,jnd_points,equivalent_models,cheapest_equivalent_model,cheapest_input_price_per_m,smallest_equivalent_model,smallest_params_b
+GPQA Diamond,94.100,3.000,5,Qwen3.7 Max,1.25,,
+MATH-500,99.400,3.000,11,Qwen3 30B A3B Thinking,0.08,Qwen3 30B A3B Thinking,3.0
+SWE-bench Verified,88.600,3.000,1,Claude Opus 4.8,5.0,,

@@ -1,0 +1,39 @@
+benchmark,domain,model,score,input_price_per_m,output_price_per_m,total_params_b,active_params_b,eval_mode,source_quality,source_url,notes
+MATH-500,Math,GPT-5 high,99.4,1.25,10.00,,,high,aggregator,https://pricepertoken.com/leaderboards/benchmark/math-500,Frontier reference from prior data
+MATH-500,Math,o3,99.2,2.00,8.00,,,reasoning,aggregator,https://pricepertoken.com/leaderboards/benchmark/math-500,
+MATH-500,Math,Grok 3 Mini high,99.2,0.25,0.50,,,high,aggregator,https://pricepertoken.com/leaderboards/benchmark/math-500,
+MATH-500,Math,Claude Sonnet 4 Thinking,99.1,3.00,15.00,,,thinking,aggregator,https://pricepertoken.com/leaderboards/benchmark/math-500,Stale for current frontier but useful as benchmark row
+MATH-500,Math,o4 Mini,98.9,0.55,2.20,,,reasoning,aggregator,https://pricepertoken.com/leaderboards/benchmark/math-500,
+MATH-500,Math,Qwen3 235B A22B Thinking,98.4,0.149,0.90,235,22,thinking,aggregator,https://pricepertoken.com/leaderboards/benchmark/math-500,
+MATH-500,Math,Llama 3.3 Nemotron Super 49B Thinking,98.3,0.10,0.40,49,,thinking,aggregator,https://pricepertoken.com/leaderboards/benchmark/math-500,
+MATH-500,Math,Claude Opus 4 Thinking,98.2,15.00,75.00,,,thinking,aggregator,https://pricepertoken.com/leaderboards/benchmark/math-500,Stale frontier row
+MATH-500,Math,Gemini 2.5 Flash Thinking,98.1,0.30,2.50,,,thinking,aggregator,https://pricepertoken.com/leaderboards/benchmark/math-500,
+MATH-500,Math,GLM 4.5 Thinking,97.9,0.60,2.20,,,thinking,aggregator,https://pricepertoken.com/leaderboards/benchmark/math-500,
+MATH-500,Math,Qwen3 30B A3B Thinking,97.6,0.08,0.40,30,3,thinking,aggregator,https://pricepertoken.com/leaderboards/benchmark/math-500,
+MATH-500,Math,Qwen3 14B Thinking,96.1,0.08,0.20,14,,thinking,aggregator,https://pricepertoken.com/leaderboards/benchmark/math-500,
+MATH-500,Math,Claude Sonnet 4 non-thinking,93.4,3.00,15.00,,,non-thinking,aggregator,https://pricepertoken.com/leaderboards/benchmark/math-500,Stale frontier row but useful mode comparison
+MATH-500,Math,DeepSeek V4 Flash,92.8,0.0983,0.1966,284,13,xhigh,provider,https://openrouter.ai/deepseek/deepseek-v4-flash/benchmarks,OpenRouter benchmark page; reasoning effort supported
+MATH-500,Math,GPT-4.1 Mini,92.5,0.40,1.60,,,standard,aggregator,https://pricepertoken.com/leaderboards/benchmark/math-500,
+MATH-500,Math,Gemini 2.0 Flash,93.0,0.10,0.40,,,standard,aggregator,https://pricepertoken.com/leaderboards/benchmark/math-500,
+MATH-500,Math,DeepSeek V4 Flash HF card,60.5,0.0983,0.1966,284,13,non-thinking,vendor,https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash,Different eval conditions; shows eval-mode trap
+GPQA Diamond,Science,Gemini 3.1 Pro Preview,94.1,2.00,12.00,,,standard,independent,https://artificialanalysis.ai/evaluations/gpqa-diamond,Top AA row
+GPQA Diamond,Science,GPT-5.5 xhigh,93.5,5.00,30.00,,,xhigh,independent,https://artificialanalysis.ai/evaluations/gpqa-diamond,Current OpenAI frontier row from AA
+GPQA Diamond,Science,GPT-5.5 high,93.2,5.00,30.00,,,high,independent,https://artificialanalysis.ai/evaluations/gpqa-diamond,Current OpenAI frontier row from AA
+GPQA Diamond,Science,Qwen3.7 Max,92.4,1.25,3.75,,,xhigh,vendor,https://qwen.ai/blog?id=qwen3.7,Qwen blog; reasoning prompt caveat
+GPQA Diamond,Science,Claude Opus 4.6 Max,91.3,5.00,25.00,,,max,vendor,https://www.anthropic.com/news/claude-4,Stale Anthropic row but useful lineage
+GPQA Diamond,Science,DeepSeek V4 Flash,89.4,0.0983,0.1966,284,13,reasoning,aggregator,https://pricepertoken.com/leaderboards/benchmark/gpqa-diamond,Prior research row; confirm eval mode before canonical use
+GPQA Diamond,Science,Qwen3.5 397B A17B,89.3,0.39,0.90,397,17,unknown,aggregator,https://pricepertoken.com/leaderboards/benchmark/gpqa-diamond,Prior research row
+GPQA Diamond,Science,MiniMax M2.7,87.4,0.279,1.20,230,,unknown,aggregator,https://pricepertoken.com/pricing-page/model/minimax-minimax-m2.7,Prior research row; vendor trail may report 89.8
+GPQA Diamond,Science,Gemma 4 31B,85.7,0.12,0.37,31,,standard,aggregator,https://pricepertoken.com/leaderboards/benchmark/gpqa-diamond,AA/PPT row differs from Google/HF 84.3
+GPQA Diamond,Science,Qwen3.5 27B,85.5,,,27,,unknown,vendor,https://huggingface.co/blog/gemma4,Prior gemma4 comparison row
+GPQA Diamond,Science,Qwen3.5 35B A3B,84.2,,,35,3,unknown,vendor,https://huggingface.co/blog/gemma4,Prior gemma4 comparison row
+GPQA Diamond,Science,Gemma 4 26B A4B,82.3,,,26,4,standard,vendor,https://huggingface.co/blog/gemma4,Prior Google/HF row
+GPQA Diamond,Science,GLM 4.5 Thinking,78.2,0.60,2.20,,,thinking,aggregator,https://designforonline.com/ai-models/z-ai-glm-4-5/,Aggregator row; needs stronger confirmation
+GPQA Diamond,Science,Qwen3.5 4B,76.2,,,4,,unknown,vendor,https://huggingface.co/blog/gemma4,Prior gemma4 comparison row
+SWE-bench Verified,Coding,Claude Opus 4.8,88.6,5.00,25.00,,,max,independent,https://www.vals.ai/benchmarks/swebench,Vals minimal bash harness; current Anthropic frontier
+SWE-bench Verified,Coding,GPT-5.5,82.6,5.00,30.00,,,default,independent,https://www.vals.ai/benchmarks/swebench,Vals minimal bash harness; current OpenAI frontier
+SWE-bench Verified,Coding,Claude Opus 4.7,82.0,5.00,25.00,,,max,independent,https://www.vals.ai/benchmarks/swebench,Stale Anthropic row
+SWE-bench Verified,Coding,Gemini 3.5 Flash,78.8,1.50,9.00,,,default,independent,https://www.vals.ai/benchmarks/swebench,
+SWE-bench Verified,Coding,GPT-5.4,78.2,2.50,15.00,,,default,independent,https://www.vals.ai/benchmarks/swebench,Stale OpenAI row
+SWE-bench Verified,Coding,GPT-5.3 Codex,78.0,1.75,14.00,,,default,independent,https://www.vals.ai/benchmarks/swebench,
+SWE-bench Verified,Coding,DeepSeek V4,77.4,0.44,,1600,49,default,independent,https://www.vals.ai/benchmarks/swebench,
