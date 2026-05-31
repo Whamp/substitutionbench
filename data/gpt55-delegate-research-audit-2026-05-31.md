@@ -9,8 +9,8 @@ The weaker GLM delegates missed material things.
 
 1. **The frontier reference is stale.** Use **GPT-5.5** and **Claude Opus 4.8**, not GPT-5.4 / Claude Opus 4.7 / Claude Sonnet 4.
 2. **The old “Claude is weak on GPQA” take is bad.** It was mostly stale-model contamination. Claude Opus 4.8 is now #1 on Artificial Analysis Intelligence Index, and Claude Opus 4.8 dominates Vals SWE-bench Verified.
-3. **GPQA Diamond is still useful, but no longer the best single pilot.** It is now near-ceiling at the top: Gemini 3.1 Pro 94.1%, GPT-5.5 xhigh 93.5%, GPT-5.5 high 93.2%.
-4. **Best pilot recommendation changed:** use a **multi-benchmark pilot**: SWE-bench Verified/Pro + LiveCodeBench + GPQA Diamond. If forced to pick one, use SWE-bench Verified for practical substitution signal.
+3. **Correction to the delegate interpretation:** GPQA Diamond being near-ceiling is not a reason to demote it for SubstitutionBench. Saturation is the signal: it helps identify the cheapest/smallest model tier that reaches indistinguishable capability on graduate-science MCQ tasks.
+4. **Best pilot recommendation:** use **saturated benchmarks first** to build substitution curves, then add harder/non-saturated benchmarks to find the next frontier. GPQA Diamond and MATH-500 remain useful anchors; SWE-bench/LiveCodeBench are complementary task domains, not replacements.
 5. **GLM is nuanced:** GLM 4.5 looks strong on MATH-500 but much weaker on GPQA; GLM-5/5.1 improve the GLM story but are verbose and not clearly cheap in real cost.
 6. **Qwen3.7-Max is a major missed candidate.** It reports GPQA Diamond 92.4 and strong SWE-style/coding-agent results, but with reasoning-mode caveats and higher cost than the budget poster children.
 
@@ -42,7 +42,7 @@ The weaker GLM delegates missed material things.
   - Gemini 3.1 Pro Preview: **94.1%**
   - GPT-5.5 xhigh: **93.5%**
   - GPT-5.5 high: **93.2%**
-- This reduces GPQA's headroom as a single benchmark. With only 198 questions, a 93–94% score means ~12–14 misses, so tiny differences are statistically fragile.
+- This reduces GPQA's headroom for ranking frontier models, but **that is not the SubstitutionBench objective**. For SubstitutionBench, the useful question is: how far down the model/cost/size curve can we go before performance falls out of the saturated band? With only 198 questions, tiny top-end differences are statistically fragile, so the benchmark should be used to find capability-equivalent tiers rather than crown a winner.
 - Source: https://artificialanalysis.ai/evaluations/gpqa-diamond
 
 ### SWE-bench Verified changed the story
@@ -111,33 +111,34 @@ Important caveat: Vals page has an inconsistent narrative line saying GPT-5.5 le
 - Google/HF material supports Gemma 4 31B GPQA Diamond **84.3%** and Gemma 4 26B A4B **82.3%**.
 - The previous **MATH-500 94.5** claim was not re-confirmed from primary Gemma material during this pass. Keep only if original source is retained and cited.
 
-## Benchmark Recommendation Update
+## Benchmark Recommendation Update — Corrected
 
-### New recommendation
+### Corrected recommendation
 
-Use a **multi-benchmark pilot**:
+Use **saturated benchmarks as first-class pilots**:
 
-1. **SWE-bench Verified / SWE-bench Pro** — main practical substitution benchmark.
-2. **LiveCodeBench** — contamination-resistant coding anchor.
-3. **GPQA Diamond** — science-reasoning anchor and continuity with prior work.
+1. **MATH-500** — saturated math benchmark; useful for showing how cheap/small a model can be while preserving high-school/competition-math capability.
+2. **GPQA Diamond** — near-saturated science-reasoning benchmark; useful for mapping the substitution floor for graduate-science MCQ tasks.
+3. **AIME family** — tiny and high-variance, but still useful as a dramatic saturated/near-saturated math stress check when aggregated across years and clearly caveated.
+4. **SWE-bench / LiveCodeBench** — complementary unsaturated coding/agentic domains. Use these to discover where frontier models still buy real marginal capability, not as replacements for the saturated-benchmark substitution story.
 
 ### If forced to choose one
 
-Choose **SWE-bench Verified**.
+Choose the saturated benchmark with the cleanest model coverage for the domain being studied. For the current pilot, that is likely **MATH-500 or GPQA Diamond**, not SWE-bench.
 
-Reason: it tests whether models can actually fix real software issues under a consistent harness. That is closer to the SubstitutionBench question — “how cheap can you go before anyone notices?” — than multiple-choice science QA.
+Reason: SubstitutionBench is not primarily asking “which frontier model is best?” It is asking “where does extra frontier spend stop buying meaningful task capability?” A saturated benchmark is exactly where that question becomes measurable.
 
 ### GPQA status
 
-Keep GPQA, but demote it. It is clean, cheap, and well-known, but current frontier scores around 93–94% make it less discriminating than before.
+Keep GPQA as a strong pilot anchor. Current frontier scores around 93–94% make it less useful for frontier ranking, but more useful for substitution-floor discovery: which cheaper/local/open models are close enough that the difference is practically irrelevant?
 
 ### AIME status
 
-Do not use AIME as the headline pilot. It is too small and too saturated; one problem is 3.33 percentage points.
+AIME is too small to stand alone, but “too saturated” is the wrong objection. The real issue is sample size: one problem is 3.33 percentage points. Use it only with multi-year aggregation and clear confidence intervals.
 
 ### LiveCodeBench status
 
-Good secondary benchmark. The public leaderboard has useful spread, but the visible extracted leaderboard did not yet include GPT-5.5 or Claude Opus 4.8, so current frontier rows may need to be run manually.
+Good complementary benchmark. The public leaderboard has useful spread, but the visible extracted leaderboard did not yet include GPT-5.5 or Claude Opus 4.8, so current frontier rows may need to be run manually. It answers a different question: where frontier models still have meaningful marginal advantage.
 
 Source: https://livecodebench.github.io/leaderboard.html
 
@@ -146,7 +147,7 @@ Source: https://livecodebench.github.io/leaderboard.html
 1. Update canonical data files to replace GPT-5.4 / Claude Opus 4.7 frontier framing with GPT-5.5 / Claude Opus 4.8.
 2. Add a `reasoning_effort` / `eval_mode` column to benchmark tables.
 3. Add a `source_quality` column: official, independent, aggregator, vendor, community.
-4. Promote SWE-bench Verified to pilot-primary and keep GPQA as secondary anchor.
+4. Treat saturation as positive substitution signal: add frontier coverage %, cheapest-equivalent model, smallest-equivalent model, and local-equivalent model per benchmark.
 5. Re-check MiniMax M2.7/M2.5 and GLM-5.1 before making them canonical table rows.
 6. Preserve old GPQA and MATH files as historical snapshots unless/until cleaned with cited revisions.
 
@@ -154,6 +155,6 @@ Source: https://livecodebench.github.io/leaderboard.html
 
 - High: GPT-5.5 and Claude Opus 4.8 are the correct current frontier references.
 - High: prior Claude weakness framing is invalid for current Anthropic.
-- High: GPQA Diamond is less attractive as a single pilot after GPT-5.5 top-end update.
-- Medium-high: SWE-bench Verified is the better pilot centerpiece.
+- High: GPQA Diamond's near-ceiling top end makes it less attractive for frontier ranking but more directly useful for substitution-floor discovery.
+- Medium-high: SWE-bench Verified is valuable as a complementary unsaturated coding benchmark, not as the replacement centerpiece for saturated-benchmark substitution analysis.
 - Medium: GLM/MiniMax exact GPQA rows need one more verification pass before canonicalization.
