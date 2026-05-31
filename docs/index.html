@@ -52,24 +52,48 @@
 
     <section class="metric-strip" id="metric-strip" aria-label="Current dashboard metrics"></section>
 
-    <section class="panel" aria-labelledby="floor-title">
-      <div class="section-head compact">
+    <section class="panel analysis-deck" aria-labelledby="deck-title">
+      <div class="section-head">
         <div>
-          <p class="label">Price floors</p>
-          <h2 id="floor-title">Cheapest in-band model vs frontier anchor</h2>
+          <p class="label">Plot deck</p>
+          <h2 id="deck-title">Artificial Analysis-style plots, rebuilt for substitution</h2>
         </div>
+        <label class="select-label">Benchmark
+          <select id="benchmark-select"></select>
+        </label>
       </div>
-      <div id="price-floor-chart" class="price-floor-chart" role="img" aria-label="Price comparison between substitution floor and frontier anchor"></div>
-    </section>
-
-    <section class="panel" aria-labelledby="threshold-title">
-      <div class="section-head compact">
-        <div>
-          <p class="label">Sensitivity</p>
-          <h2 id="threshold-title">What changes when the JND band moves?</h2>
-        </div>
+      <div id="value-summary" class="ladder-summary"></div>
+      <div class="plot-grid">
+        <article class="plot-card hero-plot" aria-labelledby="value-map-title">
+          <div class="plot-head">
+            <div>
+              <p class="label">Value map</p>
+              <h3 id="value-map-title">Quality retained vs cost saved</h3>
+            </div>
+            <span class="chip green">upper-right = substitute zone</span>
+          </div>
+          <div id="value-map" class="value-map" role="img" aria-label="Scatter plot of model quality retained against cost saved"></div>
+        </article>
+        <article class="plot-card" aria-labelledby="cost-title">
+          <div class="plot-head">
+            <div>
+              <p class="label">Token economics</p>
+              <h3 id="cost-title">Floor vs frontier price stack</h3>
+            </div>
+          </div>
+          <div id="cost-economics" class="cost-economics" role="img" aria-label="Stacked input and output token price comparison"></div>
+        </article>
+        <article class="plot-card wide-plot" aria-labelledby="leaderboard-title">
+          <div class="plot-head">
+            <div>
+              <p class="label">Leaderboard</p>
+              <h3 id="leaderboard-title">Price-sorted substitution candidates</h3>
+            </div>
+            <span class="chip violet">cutoff drawn on every row</span>
+          </div>
+          <div id="substitution-leaderboard" class="substitution-curve" role="img" aria-label="Artificial Analysis style bar chart of model scores and JND cutoff"></div>
+        </article>
       </div>
-      <div id="threshold-matrix" class="threshold-matrix"></div>
     </section>
 
     <section class="panel" aria-labelledby="benchmark-guide-title">
@@ -81,20 +105,6 @@
         <p class="caption">Each floor only applies to the task style represented by that benchmark.</p>
       </div>
       <div id="benchmark-guide" class="benchmark-guide"></div>
-    </section>
-
-    <section class="panel" aria-labelledby="curve-title">
-      <div class="section-head">
-        <div>
-          <p class="label">Substitution curve</p>
-          <h2 id="curve-title">Score bars sorted by input price</h2>
-        </div>
-        <label class="select-label">Benchmark
-          <select id="benchmark-select"></select>
-        </label>
-      </div>
-      <div id="curve-summary" class="ladder-summary"></div>
-      <div id="substitution-curve" class="substitution-curve" role="img" aria-label="Artificial Analysis style bar chart of model scores and JND cutoff"></div>
     </section>
 
     <section class="panel details-panel" aria-labelledby="universe-title">

@@ -145,6 +145,22 @@ function savingsMultiple(floor, frontier) {
   return frontier.input_price_per_m / floor.input_price_per_m;
 }
 
+function tokenStackCost(row) {
+  if (!row) return null;
+  const input = Number(row.input_price_per_m ?? 0);
+  const output = Number(row.output_price_per_m ?? 0);
+  return { input, output, total: input + output };
+}
+
+function costSavedPct(row, frontier) {
+  if (!row?.input_price_per_m || !frontier?.input_price_per_m) return null;
+  return (1 - (row.input_price_per_m / frontier.input_price_per_m)) * 100;
+}
+
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
+}
+
 function renderThresholdButtons() {
   const markup = thresholds.map((threshold) => `
     <button class="threshold ${threshold === state.threshold ? 'active' : ''}" data-threshold="${threshold}">${threshold} pt${threshold > 1 ? 's' : ''}</button>
@@ -330,25 +346,109 @@ function renderBenchmarkSelect() {
   };
 }
 
-function renderCurveSummary() {
+function renderValueSummary() {
   const status = substitutionStatus(state.benchmark);
   const floor = status.floor;
   const frontier = status.frontier;
   const multiple = savingsMultiple(floor, frontier);
+  const saved = floor && frontier ? costSavedPct(floor, frontier) : null;
   const cutoff = frontier ? frontier.frontier_score - state.threshold : null;
-  const rows = pricedRows(state.benchmark);
   const cards = [
-    { label: 'Chart order', value: 'Cheap → costly', copy: `${rows.length} priced models shown` },
-    { label: 'JND cutoff', value: cutoff !== null ? `≥${pct(cutoff)}` : 'none', copy: `${state.threshold} pts below frontier qualifies` },
-    { label: 'Cheapest in band', value: floor ? dollars(floor.input_price_per_m) : 'none', copy: floor ? `${shortModel(floor.model)}${multiple && multiple > 1.05 ? ` · ${multiple.toFixed(multiple >= 10 ? 0 : 1)}× cheaper` : ''}` : 'No candidate' },
+    { label: 'Substitution floor', value: floor ? shortModel(floor.model) : 'none', copy: floor ? `${dollars(floor.input_price_per_m)} · ${points(floor.score_gap)} below frontier` : 'No qualifying priced candidate' },
+    { label: 'Cost saved', value: saved !== null ? `${Math.max(0, saved).toFixed(0)}%` : 'none', copy: multiple && multiple > 1.05 ? `${multiple.toFixed(multiple >= 10 ? 0 : 1)}× cheaper than frontier input price` : 'No cheaper in-band replacement' },
+    { label: 'Decision line', value: cutoff !== null ? `≥${pct(cutoff)}` : 'none', copy: `${state.threshold} pt JND band on ${state.benchmark}` },
   ];
-  document.getElementById('curve-summary').innerHTML = cards.map((card) => `
+  document.getElementById('value-summary').innerHTML = cards.map((card) => `
     <article class="summary-card">
       <span class="label">${escapeHtml(card.label)}</span>
       <strong>${escapeHtml(card.value)}</strong>
       <span class="muted">${escapeHtml(card.copy)}</span>
     </article>
   `).join('');
+}
+
+function renderValueMap() {
+  const rows = pricedRows(state.benchmark);
+  const frontier = frontierRow(state.benchmark);
+  if (!frontier || !rows.length) {
+    document.getElementById('value-map').innerHTML = '<p class="muted">No priced rows for this benchmark.</p>';
+    return;
+  }
+  const cutoff = frontier.frontier_score - state.threshold;
+  const cutoffCoverage = (cutoff / frontier.frontier_score) * 100;
+  const pointsData = rows.map((row) => ({ row, saved: costSavedPct(row, frontier) ?? 0, coverage: row.frontier_coverage }));
+  const rawMinSaved = Math.min(-20, ...pointsData.map((item) => item.saved));
+  const minSaved = Math.max(-150, rawMinSaved);
+  const maxSaved = Math.max(100, ...pointsData.map((item) => item.saved));
+  const minCoverage = Math.max(0, Math.floor((Math.min(cutoffCoverage, ...pointsData.map((item) => item.coverage)) - 5) / 5) * 5);
+  const x = (saved) => clamp(((saved - minSaved) / (maxSaved - minSaved)) * 100, 0, 100);
+  const y = (coverage) => clamp(((100 - coverage) / (100 - minCoverage)) * 100, 0, 100);
+  const zeroX = x(0);
+  const cutoffY = y(cutoffCoverage);
+  const floor = cheapestEquivalent(state.benchmark);
+
+  const dots = pointsData.map(({ row, saved, coverage }) => {
+    const ok = equivalent(row);
+    const isFrontier = row.model === frontier.model;
+    const isFloor = row.model === floor?.model;
+    const label = isFloor || isFrontier ? shortModel(row.model) : '';
+    const tone = isFrontier ? 'frontier' : isFloor ? 'floor' : ok ? 'in-band' : 'out-band';
+    return `
+      <span class="value-dot ${tone}" style="left:${x(saved)}%; top:${y(coverage)}%" title="${escapeHtml(row.model)}: ${pct(coverage)} retained, ${saved.toFixed(0)}% cost saved">
+        <span class="dot-core"></span>
+        ${label ? `<span class="dot-label">${escapeHtml(label)}</span>` : ''}
+      </span>
+    `;
+  }).join('');
+
+  document.getElementById('value-map').innerHTML = `
+    <div class="safe-zone" style="left:${zeroX}%; top:0; height:${cutoffY}%;"></div>
+    <span class="cutoff-line horizontal" style="top:${cutoffY}%"><span>${pct(cutoffCoverage)} retained cutoff</span></span>
+    <span class="cutoff-line vertical" style="left:${zeroX}%"><span>no savings</span></span>
+    <div class="plot-callout"><span class="label">Selected floor</span><strong>${floor ? escapeHtml(shortModel(floor.model)) : 'none'}</strong><span>${floor ? `${dollars(floor.input_price_per_m)} · ${Math.max(0, costSavedPct(floor, frontier) ?? 0).toFixed(0)}% saved` : 'No floor'}</span></div>
+    ${dots}
+    <div class="plot-y-label">Quality retained vs frontier</div>
+    <div class="plot-x-label">Cost saved vs frontier input price</div>
+    <div class="axis-note left">${rawMinSaved < minSaved ? `≤${minSaved.toFixed(0)}%` : `${minSaved.toFixed(0)}%`}</div>
+    <div class="axis-note right">${maxSaved.toFixed(0)}%</div>
+  `;
+}
+
+function renderCostEconomics() {
+  const status = substitutionStatus(state.benchmark);
+  const comparison = [
+    { role: status.action === 'substitute' ? 'Floor' : 'Required frontier', row: status.floor, cls: status.action === 'substitute' ? 'floor' : 'frontier' },
+    { role: 'Frontier anchor', row: status.frontier, cls: 'frontier' },
+  ].filter((item) => item.row);
+  if (!comparison.length) {
+    document.getElementById('cost-economics').innerHTML = '<p class="muted">No cost rows for this benchmark.</p>';
+    return;
+  }
+  const stacks = comparison.map((item) => ({ ...item, cost: tokenStackCost(item.row) })).filter((item) => item.cost);
+  const maxTotal = Math.max(...stacks.map((item) => item.cost.total), 1);
+  const logMax = Math.log10(maxTotal + 1);
+  document.getElementById('cost-economics').innerHTML = `
+    <div class="cost-legend"><span><i class="input-key"></i>input</span><span><i class="output-key"></i>output</span></div>
+    ${stacks.map(({ role, row, cost, cls }) => {
+      const totalWidth = Math.max(10, (Math.log10(cost.total + 1) / logMax) * 100);
+      const inputWidth = totalWidth * (cost.input / cost.total);
+      const outputWidth = totalWidth * (cost.output / cost.total);
+      return `
+        <article class="cost-row ${escapeHtml(cls)}">
+          <div class="cost-row-head">
+            <strong>${escapeHtml(role)}</strong>
+            <span>${escapeHtml(shortModel(row.model))}</span>
+          </div>
+          <div class="cost-stack" aria-label="${escapeHtml(row.model)} input ${dollars(cost.input)} output ${dollars(cost.output)}">
+            <span class="input-seg" style="width:${inputWidth}%"></span>
+            <span class="output-seg" style="width:${outputWidth}%"></span>
+          </div>
+          <div class="cost-values"><span>${dollars(cost.input)} in</span><span>${dollars(cost.output)} out</span><strong>${dollars(cost.total)} blended</strong></div>
+        </article>
+      `;
+    }).join('')}
+    <p class="plot-footnote">Bars are log-compressed so cheap floors remain visible. Blended price assumes 1M input + 1M output tokens; workload mix will change the exact bill.</p>
+  `;
 }
 
 function renderSubstitutionCurve() {
@@ -375,7 +475,7 @@ function renderSubstitutionCurve() {
         </div>
         <div class="curve-bar-wrap" aria-label="${escapeHtml(row.model)} score ${pct(row.score)} cutoff ${pct(cutoff)}">
           <span class="curve-jnd-zone" style="left:${cutoffLeft}%"></span>
-          <span class="curve-cutoff ${cutoffLeft > 80 ? 'label-left' : ''}" style="left:${cutoffLeft}%"><span>${pct(cutoff)} cutoff</span></span>
+          <span class="curve-cutoff ${cutoffLeft > 80 ? 'label-left' : ''}" style="left:${cutoffLeft}%">${index === 0 ? `<span>${pct(cutoff)} cutoff</span>` : ''}</span>
           <span class="curve-bar" style="width:${scaleScore(row.score)}%"></span>
         </div>
         <div class="curve-score">
@@ -386,7 +486,7 @@ function renderSubstitutionCurve() {
     `;
   }).join('');
 
-  document.getElementById('substitution-curve').innerHTML = `
+  document.getElementById('substitution-leaderboard').innerHTML = `
     <div class="curve-toolbar">
       <div class="chip-row">
         <span class="chip mono">${rows.length} of ${rows.length} models</span>
@@ -459,7 +559,9 @@ function renderModelUniverse() {
 }
 
 function renderSelectedBenchmark() {
-  renderCurveSummary();
+  renderValueSummary();
+  renderValueMap();
+  renderCostEconomics();
   renderSubstitutionCurve();
   renderObservationCards();
 }
@@ -470,8 +572,6 @@ function renderAll() {
   renderJndExplainer();
   renderMetricStrip();
   renderStatusBoard();
-  renderPriceFloorChart();
-  renderThresholdMatrix();
   renderBenchmarkGuide();
   renderBenchmarkSelect();
   renderModelUniverse();

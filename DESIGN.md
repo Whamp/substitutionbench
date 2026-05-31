@@ -24,8 +24,10 @@ Use Inter for UI and JetBrains Mono for numeric labels, prices, score gaps, and 
 - Plain-language JND explanation tied to the selected threshold and benchmark frontier score.
 - Benchmark guide cards with task description, example question shape, and source scope.
 - Analysis universe section showing observation rows, unique model count, source mix, and included model lists.
-- Artificial Analysis-style substitution curve: benchmark-selected score bars sorted by input price, with direct score labels and a visible JND cutoff line.
-- Threshold sensitivity matrix for 1, 3, and 5 point JND bands.
+- Artificial Analysis-inspired plot deck: value map (quality retained vs cost saved), token economics stack, and price-sorted substitution leaderboard.
+- The value map is the primary substitution plot: upper-right means high quality retention with lower cost, with the selected floor called out directly.
+- Token economics bars are log-compressed so large frontier/floor price gaps remain readable on mobile.
+- Threshold sensitivity belongs in the selected JND control and live decision line, not a separate table unless the user asks for detailed audit mode.
 
 ## Accessibility
 

@@ -12,10 +12,10 @@ def test_static_site_exposes_mobile_first_dashboard_sections() -> None:
     assert '<meta name="viewport" content="width=device-width, initial-scale=1"' in html
     assert "Substitution floors, not leaderboards." in html
     assert "status-board" in html
-    assert "price-floor-chart" in html
-    assert "threshold-matrix" in html
-    assert "benchmark-guide" in html
-    assert "substitution-curve" in html
+    assert "plot deck" in html.lower()
+    assert "value-map" in html
+    assert "cost-economics" in html
+    assert "substitution-leaderboard" in html
     assert "model-universe" in html
     assert "JND, or just-noticeable difference" in html
     assert "mobile-threshold" in html
@@ -33,13 +33,15 @@ def test_static_site_uses_visual_price_and_gap_encodings() -> None:
     css = (ROOT / "docs" / "styles.css").read_text()
 
     assert "savingsMultiple" in js
-    assert "renderPriceFloorChart" in js
-    assert "renderThresholdMatrix" in js
+    assert "renderValueMap" in js
+    assert "renderCostEconomics" in js
     assert "renderSubstitutionCurve" in js
     assert "renderBenchmarkGuide" in js
     assert "renderModelUniverse" in js
     assert "qualificationLine" in js
-    assert ".price-track" in css
+    assert ".value-map" in css
+    assert ".safe-zone" in css
+    assert ".cost-stack" in css
     assert ".curve-bar-wrap" in css
     assert ".curve-cutoff" in css
     assert ".substitution-curve" in css
