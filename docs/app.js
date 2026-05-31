@@ -8,6 +8,34 @@ const observations = data.observations;
 const benchmarks = Object.keys(data.configs);
 const thresholds = data.thresholds;
 
+const benchmarkMeta = {
+  'MATH-500': {
+    plain: 'High-school competition math: algebra, geometry, number theory, precalculus, and counting problems with exact answers.',
+    example: 'Example shape: convert coordinates, count divisors, solve a geometry volume problem, or reduce a finite/infinite algebra expression.',
+    substitution: 'Good for tasks where the answer is checkable and the reasoning path is mostly mathematical.',
+    source: '500-problem MATH subset used by OpenAI in Let\u2019s Verify Step by Step.',
+  },
+  'GPQA Diamond': {
+    plain: 'Graduate-level, Google-proof science multiple choice across biology, chemistry, and physics.',
+    example: 'Example shape: choose the correct mechanism, physical relationship, or experimental implication when surface web search is not enough.',
+    substitution: 'Good for hard expert science QA, not ordinary trivia or broad web lookup.',
+    source: '198-question Diamond split from GPQA, written by domain experts.',
+  },
+  'SWE-bench Verified': {
+    plain: 'Real GitHub software issues where the model must edit a repository and produce a patch that passes tests.',
+    example: 'Example shape: given a bug report and codebase, change Python code so the failing behavior is fixed without breaking tests.',
+    substitution: 'Good for agentic coding and repo repair. This is where frontier models still buy capability in the MVP data.',
+    source: '500 SWE-bench tasks confirmed by software engineers as solvable.',
+  },
+};
+
+const sourceLabels = {
+  independent: 'independent eval',
+  aggregator: 'aggregator row',
+  vendor: 'vendor row',
+  provider: 'provider row',
+};
+
 function escapeHtml(value) {
   return String(value ?? '')
     .replaceAll('&', '&amp;')
@@ -54,6 +82,25 @@ function equivalent(row, threshold = state.threshold) {
 
 function pricedRows(benchmark) {
   return rowsForBenchmark(benchmark).filter((row) => row.input_price_per_m !== null);
+}
+
+function uniqueModels(rows = observations) {
+  return Array.from(new Set(rows.map((row) => row.model))).sort((a, b) => a.localeCompare(b));
+}
+
+function countBy(rows, key) {
+  return rows.reduce((acc, row) => {
+    const value = row[key] || 'unknown';
+    acc[value] = (acc[value] ?? 0) + 1;
+    return acc;
+  }, {});
+}
+
+function qualificationLine(benchmark, threshold = state.threshold) {
+  const frontier = frontierRow(benchmark);
+  if (!frontier) return `A ${threshold} pt JND band means a model may score ${threshold} points below the frontier and still qualify.`;
+  const cutoff = frontier.frontier_score - threshold;
+  return `JND, or just-noticeable difference, means how much worse a cheaper model can score and still count as equivalent. At ${threshold} pts on ${benchmark}, frontier scores ${pct(frontier.frontier_score)}; any model at ${pct(cutoff)} or higher is in band.`;
 }
 
 function cheapestEquivalent(benchmark, threshold = state.threshold) {
@@ -129,6 +176,15 @@ function renderHeadline() {
     `<span class="chip violet">${state.threshold} pt JND</span>`,
     `<span class="chip">${floors.filter((item) => item.action === 'frontier').length} frontier-bound</span>`,
   ].join('');
+}
+
+function renderJndExplainer() {
+  const cheapest = benchmarks
+    .map((benchmark) => ({ benchmark, status: substitutionStatus(benchmark) }))
+    .filter((item) => item.status.action === 'substitute')
+    .sort((a, b) => a.status.floor.input_price_per_m - b.status.floor.input_price_per_m)[0];
+  const benchmark = cheapest?.benchmark ?? state.benchmark;
+  document.getElementById('jnd-explainer').textContent = qualificationLine(benchmark);
 }
 
 function renderMetricStrip() {
@@ -237,6 +293,33 @@ function renderThresholdMatrix() {
   document.getElementById('threshold-matrix').innerHTML = header + rows;
 }
 
+function renderBenchmarkGuide() {
+  document.getElementById('benchmark-guide').innerHTML = benchmarks.map((benchmark) => {
+    const meta = benchmarkMeta[benchmark];
+    const rows = rowsForBenchmark(benchmark);
+    const status = substitutionStatus(benchmark);
+    return `
+      <article class="benchmark-card">
+        <div class="benchmark-card-top">
+          <h3>${escapeHtml(benchmark)}</h3>
+          <span class="chip ${status.tone}">${escapeHtml(status.label)}</span>
+        </div>
+        <p>${escapeHtml(meta.plain)}</p>
+        <div class="example-box">
+          <span class="label">Example question shape</span>
+          <p>${escapeHtml(meta.example)}</p>
+        </div>
+        <p class="muted">${escapeHtml(meta.substitution)}</p>
+        <div class="chip-row">
+          <span class="chip mono">${rows.length} rows</span>
+          <span class="chip mono">${uniqueModels(rows).length} models</span>
+          <span class="chip">${escapeHtml(meta.source)}</span>
+        </div>
+      </article>
+    `;
+  }).join('');
+}
+
 function renderBenchmarkSelect() {
   const select = document.getElementById('benchmark-select');
   select.innerHTML = benchmarks.map((benchmark) => `<option value="${escapeHtml(benchmark)}">${escapeHtml(benchmark)}</option>`).join('');
@@ -318,6 +401,44 @@ function renderObservationCards() {
   }).join('');
 }
 
+function renderModelUniverse() {
+  const allModels = uniqueModels();
+  const sourceCounts = countBy(observations, 'source_quality');
+  const sourceChips = Object.entries(sourceCounts)
+    .sort((a, b) => b[1] - a[1])
+    .map(([source, count]) => `<span class="chip mono">${count} ${escapeHtml(sourceLabels[source] ?? source)}</span>`)
+    .join('');
+
+  const benchmarkBlocks = benchmarks.map((benchmark) => {
+    const rows = rowsForBenchmark(benchmark);
+    const models = uniqueModels(rows);
+    const sourceMix = Object.entries(countBy(rows, 'source_quality'))
+      .sort((a, b) => b[1] - a[1])
+      .map(([source, count]) => `${count} ${source}`)
+      .join(' · ');
+    return `
+      <article class="universe-benchmark">
+        <div class="benchmark-card-top">
+          <h3>${escapeHtml(benchmark)}</h3>
+          <span class="chip mono">${models.length} models</span>
+        </div>
+        <p class="muted">${escapeHtml(sourceMix)}</p>
+        <div class="model-list">${models.map((model) => `<span>${escapeHtml(shortModel(model))}</span>`).join('')}</div>
+      </article>
+    `;
+  }).join('');
+
+  document.getElementById('model-universe').innerHTML = `
+    <div class="universe-summary">
+      <article class="summary-card"><span class="label">Observation rows</span><strong>${observations.length}</strong><span class="muted">One model score on one benchmark</span></article>
+      <article class="summary-card"><span class="label">Unique models</span><strong>${allModels.length}</strong><span class="muted">Across all MVP benchmarks</span></article>
+      <article class="summary-card"><span class="label">Scope warning</span><strong>MVP only</strong><span class="muted">Conclusions apply only to these included rows, not every model in market.</span></article>
+    </div>
+    <div class="chip-row source-row">${sourceChips}</div>
+    <div class="universe-grid">${benchmarkBlocks}</div>
+  `;
+}
+
 function renderSelectedBenchmark() {
   renderLadderSummary();
   renderEvidenceLadder();
@@ -327,11 +448,14 @@ function renderSelectedBenchmark() {
 function renderAll() {
   renderThresholdButtons();
   renderHeadline();
+  renderJndExplainer();
   renderMetricStrip();
   renderStatusBoard();
   renderPriceFloorChart();
   renderThresholdMatrix();
+  renderBenchmarkGuide();
   renderBenchmarkSelect();
+  renderModelUniverse();
   renderSelectedBenchmark();
 }
 

@@ -10,11 +10,13 @@ A technical decision-maker evaluating model spend from a phone or laptop. They n
 
 ## Dashboard job
 
-The MVP dashboard should make three facts obvious within seconds:
+The MVP dashboard should make five facts obvious within seconds:
 
 1. Which benchmarks are saturated enough to substitute.
 2. Which model is the cheapest frontier-equivalent floor at the selected JND threshold.
-3. Which benchmarks still require frontier models.
+3. What the selected JND threshold means in plain English.
+4. Which models and sources are actually included in the analysis universe.
+5. Which benchmarks still require frontier models.
 
 ## Register
 

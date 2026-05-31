@@ -10,16 +10,20 @@ Use Inter for UI and JetBrains Mono for numeric labels, prices, score gaps, and 
 
 ## Layout principles
 
-- Mobile-first validation: answer, threshold, benchmark status, chart, details.
+- Mobile-first validation: answer, threshold explanation, benchmark status, chart, universe transparency, details.
 - Visual encodings should carry the story before explanatory copy.
 - Price is the primary visual axis for substitution floors.
 - Coverage is secondary and should not be the dominant bar length in floor summaries.
+- Benchmark cards must explain what task type the score represents, including an example question shape.
 - Tables are secondary evidence and should degrade into grouped cards on mobile.
 
 ## Components
 
 - Segmented JND selector with visible focus and active states.
 - Benchmark status rows showing benchmark, status, floor model, price, gap, and savings multiple.
+- Plain-language JND explanation tied to the selected threshold and benchmark frontier score.
+- Benchmark guide cards with task description, example question shape, and source scope.
+- Analysis universe section showing observation rows, unique model count, source mix, and included model lists.
 - Selected benchmark evidence ladder comparing cheap candidates against the frontier anchor.
 - Threshold sensitivity matrix for 1, 3, and 5 point JND bands.
 

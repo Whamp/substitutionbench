@@ -14,7 +14,10 @@ def test_static_site_exposes_mobile_first_dashboard_sections() -> None:
     assert "status-board" in html
     assert "price-floor-chart" in html
     assert "threshold-matrix" in html
+    assert "benchmark-guide" in html
     assert "evidence-ladder" in html
+    assert "model-universe" in html
+    assert "JND, or just-noticeable difference" in html
     assert "mobile-threshold" in html
 
 
@@ -33,8 +36,13 @@ def test_static_site_uses_visual_price_and_gap_encodings() -> None:
     assert "renderPriceFloorChart" in js
     assert "renderThresholdMatrix" in js
     assert "renderEvidenceLadder" in js
+    assert "renderBenchmarkGuide" in js
+    assert "renderModelUniverse" in js
+    assert "qualificationLine" in js
     assert ".price-track" in css
     assert ".gap-track" in css
+    assert ".benchmark-guide" in css
+    assert ".model-list" in css
 
 
 def test_static_site_data_matches_mvp_benchmarks() -> None:

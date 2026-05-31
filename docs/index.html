@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>SubstitutionBench MVP</title>
   <meta name="description" content="Find the cheapest model that reaches frontier-equivalent capability on saturated benchmarks." />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%2308090b'/%3E%3Ccircle cx='24' cy='24' r='14' fill='%237772f8'/%3E%3Ccircle cx='40' cy='40' r='14' fill='%2325c083'/%3E%3C/svg%3E" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -28,6 +29,7 @@
           <button class="threshold" data-threshold="5">5 pts</button>
         </div>
         <h1 id="answer-title">Substitution floors, not leaderboards.</h1>
+        <p id="jnd-explainer" class="jnd-copy">JND, or just-noticeable difference, means how much worse a cheaper model can score and still count as equivalent.</p>
       </div>
       <article class="headline-card" aria-live="polite">
         <span class="label">Cheapest in-band floor</span>
@@ -70,6 +72,17 @@
       <div id="threshold-matrix" class="threshold-matrix"></div>
     </section>
 
+    <section class="panel" aria-labelledby="benchmark-guide-title">
+      <div class="section-head compact">
+        <div>
+          <p class="label">Benchmark guide</p>
+          <h2 id="benchmark-guide-title">What kind of questions are these?</h2>
+        </div>
+        <p class="caption">Each floor only applies to the task style represented by that benchmark.</p>
+      </div>
+      <div id="benchmark-guide" class="benchmark-guide"></div>
+    </section>
+
     <section class="panel" aria-labelledby="ladder-title">
       <div class="section-head">
         <div>
@@ -82,6 +95,19 @@
       </div>
       <div id="ladder-summary" class="ladder-summary"></div>
       <div id="evidence-ladder" class="evidence-ladder" role="img" aria-label="Models plotted by score gap from frontier"></div>
+    </section>
+
+    <section class="panel details-panel" aria-labelledby="universe-title">
+      <details open>
+        <summary>
+          <span>
+            <span class="label">Analysis universe</span>
+            <strong id="universe-title">Models included in this MVP</strong>
+          </span>
+          <span class="summary-hint">Rows, sources, and model lists</span>
+        </summary>
+        <div id="model-universe" class="model-universe"></div>
+      </details>
     </section>
 
     <section class="panel details-panel" aria-labelledby="rows-title">
