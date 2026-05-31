@@ -6,15 +6,16 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_static_site_exposes_mobile_mvp_dashboard() -> None:
+def test_static_site_exposes_mobile_first_dashboard_sections() -> None:
     html = (ROOT / "docs" / "index.html").read_text()
 
     assert '<meta name="viewport" content="width=device-width, initial-scale=1"' in html
-    assert "How cheap can you go before anyone notices?" in html
-    assert "data-threshold=\"1\"" in html
-    assert "data-threshold=\"3\"" in html
-    assert "data-threshold=\"5\"" in html
-    assert "benchmark-select" in html
+    assert "Substitution floors, not leaderboards." in html
+    assert "status-board" in html
+    assert "price-floor-chart" in html
+    assert "threshold-matrix" in html
+    assert "evidence-ladder" in html
+    assert "mobile-threshold" in html
 
 
 def test_static_site_javascript_does_not_classify_unsaturated_as_saturated() -> None:
@@ -22,6 +23,18 @@ def test_static_site_javascript_does_not_classify_unsaturated_as_saturated() -> 
 
     assert "kind.includes('saturated')" not in js
     assert "kind === 'saturated' || kind === 'near_saturated'" in js
+
+
+def test_static_site_uses_visual_price_and_gap_encodings() -> None:
+    js = (ROOT / "docs" / "app.js").read_text()
+    css = (ROOT / "docs" / "styles.css").read_text()
+
+    assert "savingsMultiple" in js
+    assert "renderPriceFloorChart" in js
+    assert "renderThresholdMatrix" in js
+    assert "renderEvidenceLadder" in js
+    assert ".price-track" in css
+    assert ".gap-track" in css
 
 
 def test_static_site_data_matches_mvp_benchmarks() -> None:

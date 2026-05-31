@@ -7,94 +7,101 @@
   <meta name="description" content="Find the cheapest model that reaches frontier-equivalent capability on saturated benchmarks." />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <header class="shell hero">
-    <nav class="nav" aria-label="Primary">
-      <div class="brand"><span class="brand-mark"></span>SubstitutionBench</div>
-      <a class="nav-link" href="https://github.com/Whamp/substitutionbench">GitHub</a>
-    </nav>
+  <a class="skip-link" href="#main-content">Skip to dashboard</a>
 
-    <section class="hero-grid">
-      <div>
-        <p class="eyebrow">MVP dashboard · saturated benchmarks are the signal</p>
-        <h1>How cheap can you go before anyone notices?</h1>
-        <p class="hero-copy">SubstitutionBench flips benchmark leaderboards around: instead of crowning the smartest model, it finds the cheapest or smallest model inside a just-noticeable-difference band of the frontier.</p>
-        <div class="controls" role="group" aria-label="JND threshold selector">
-          <span>JND threshold</span>
+  <header class="shell topbar">
+    <div class="brand" aria-label="SubstitutionBench"><span class="brand-mark"></span>SubstitutionBench</div>
+    <a class="nav-link" href="https://github.com/Whamp/substitutionbench">GitHub</a>
+  </header>
+
+  <main id="main-content" class="shell app-shell">
+    <section class="answer-panel" aria-labelledby="answer-title">
+      <div class="answer-copy">
+        <p class="label">Selected JND band</p>
+        <div class="threshold-control" role="group" aria-label="JND threshold selector">
           <button class="threshold" data-threshold="1">1 pt</button>
           <button class="threshold active" data-threshold="3">3 pts</button>
           <button class="threshold" data-threshold="5">5 pts</button>
         </div>
+        <h1 id="answer-title">Substitution floors, not leaderboards.</h1>
       </div>
-      <aside class="hero-card" aria-label="Current headline">
-        <span class="status-dot"></span>
-        <p class="card-label">Current MVP signal</p>
-        <strong id="headline-floor">Loading…</strong>
-        <p id="headline-copy">Computing substitution floors from current public rows.</p>
-      </aside>
+      <article class="headline-card" aria-live="polite">
+        <span class="label">Cheapest in-band floor</span>
+        <strong id="headline-price">Loading</strong>
+        <p id="headline-model">Computing current MVP rows.</p>
+        <div id="headline-chips" class="chip-row"></div>
+      </article>
     </section>
-  </header>
 
-  <main class="shell">
-    <section class="kpi-grid" aria-label="MVP metrics" id="kpis"></section>
-
-    <section class="panel">
-      <div class="panel-heading">
+    <section class="panel primary-panel" aria-labelledby="status-title">
+      <div class="section-head compact">
         <div>
-          <p class="eyebrow">Substitution floors</p>
-          <h2>Cheapest frontier-equivalent model by benchmark</h2>
+          <p class="label">Story board</p>
+          <h2 id="status-title">What substitutes now?</h2>
         </div>
-        <p class="muted">Green means the model is inside the selected JND band.</p>
+        <p class="caption">Price is the visual axis. Coverage is the qualifier.</p>
       </div>
-      <div id="floor-chart" class="chart" role="img" aria-label="Cheapest equivalent model chart"></div>
-      <div id="floor-cards" class="floor-grid"></div>
+      <div id="status-board" class="status-board"></div>
     </section>
 
-    <section class="panel">
-      <div class="panel-heading">
+    <section class="metric-strip" id="metric-strip" aria-label="Current dashboard metrics"></section>
+
+    <section class="panel" aria-labelledby="floor-title">
+      <div class="section-head compact">
         <div>
-          <p class="eyebrow">Curve view</p>
-          <h2>Price vs frontier coverage</h2>
+          <p class="label">Price floors</p>
+          <h2 id="floor-title">Cheapest in-band model vs frontier anchor</h2>
+        </div>
+      </div>
+      <div id="price-floor-chart" class="price-floor-chart" role="img" aria-label="Price comparison between substitution floor and frontier anchor"></div>
+    </section>
+
+    <section class="panel" aria-labelledby="threshold-title">
+      <div class="section-head compact">
+        <div>
+          <p class="label">Sensitivity</p>
+          <h2 id="threshold-title">What changes when the JND band moves?</h2>
+        </div>
+      </div>
+      <div id="threshold-matrix" class="threshold-matrix"></div>
+    </section>
+
+    <section class="panel" aria-labelledby="ladder-title">
+      <div class="section-head">
+        <div>
+          <p class="label">Evidence ladder</p>
+          <h2 id="ladder-title">Candidate models against the frontier</h2>
         </div>
         <label class="select-label">Benchmark
           <select id="benchmark-select"></select>
         </label>
       </div>
-      <div id="curve-chart" class="chart tall" role="img" aria-label="Substitution curve"></div>
-      <p class="muted small">Hover points on desktop for details. On mobile, use the table below.</p>
+      <div id="ladder-summary" class="ladder-summary"></div>
+      <div id="evidence-ladder" class="evidence-ladder" role="img" aria-label="Models plotted by score gap from frontier"></div>
     </section>
 
-    <section class="panel">
-      <div class="panel-heading">
-        <div>
-          <p class="eyebrow">Rows behind the chart</p>
-          <h2>Model observations</h2>
-        </div>
-      </div>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Model</th>
-              <th>Benchmark</th>
-              <th>Score</th>
-              <th>Coverage</th>
-              <th>Price</th>
-              <th>Mode</th>
-              <th>Source</th>
-            </tr>
-          </thead>
-          <tbody id="rows"></tbody>
-        </table>
-      </div>
+    <section class="panel details-panel" aria-labelledby="rows-title">
+      <details open>
+        <summary>
+          <span>
+            <span class="label">Rows</span>
+            <strong id="rows-title">Observation cards</strong>
+          </span>
+          <span class="summary-hint">Filtered by selected benchmark</span>
+        </summary>
+        <div id="observation-cards" class="observation-cards"></div>
+      </details>
     </section>
   </main>
 
+  <div class="mobile-threshold" aria-label="Mobile JND threshold selector"></div>
+
   <footer class="shell footer">
-    <p>This is an MVP from public/aggregated rows. It deliberately treats saturation as useful: the floor is the point.</p>
+    MVP data from public and aggregated benchmark rows. Saturation is treated as signal: it marks where frontier spend stops buying visible capability.
   </footer>
 
   <script src="data.js"></script>
