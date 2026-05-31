@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SubstitutionBench MVP</title>
+  <meta name="description" content="Find the cheapest model that reaches frontier-equivalent capability on saturated benchmarks." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="shell hero">
+    <nav class="nav" aria-label="Primary">
+      <div class="brand"><span class="brand-mark"></span>SubstitutionBench</div>
+      <a class="nav-link" href="https://github.com/Whamp/substitutionbench">GitHub</a>
+    </nav>
+
+    <section class="hero-grid">
+      <div>
+        <p class="eyebrow">MVP dashboard · saturated benchmarks are the signal</p>
+        <h1>How cheap can you go before anyone notices?</h1>
+        <p class="hero-copy">SubstitutionBench flips benchmark leaderboards around: instead of crowning the smartest model, it finds the cheapest or smallest model inside a just-noticeable-difference band of the frontier.</p>
+        <div class="controls" role="group" aria-label="JND threshold selector">
+          <span>JND threshold</span>
+          <button class="threshold" data-threshold="1">1 pt</button>
+          <button class="threshold active" data-threshold="3">3 pts</button>
+          <button class="threshold" data-threshold="5">5 pts</button>
+        </div>
+      </div>
+      <aside class="hero-card" aria-label="Current headline">
+        <span class="status-dot"></span>
+        <p class="card-label">Current MVP signal</p>
+        <strong id="headline-floor">Loading…</strong>
+        <p id="headline-copy">Computing substitution floors from current public rows.</p>
+      </aside>
+    </section>
+  </header>
+
+  <main class="shell">
+    <section class="kpi-grid" aria-label="MVP metrics" id="kpis"></section>
+
+    <section class="panel">
+      <div class="panel-heading">
+        <div>
+          <p class="eyebrow">Substitution floors</p>
+          <h2>Cheapest frontier-equivalent model by benchmark</h2>
+        </div>
+        <p class="muted">Green means the model is inside the selected JND band.</p>
+      </div>
+      <div id="floor-chart" class="chart" role="img" aria-label="Cheapest equivalent model chart"></div>
+      <div id="floor-cards" class="floor-grid"></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-heading">
+        <div>
+          <p class="eyebrow">Curve view</p>
+          <h2>Price vs frontier coverage</h2>
+        </div>
+        <label class="select-label">Benchmark
+          <select id="benchmark-select"></select>
+        </label>
+      </div>
+      <div id="curve-chart" class="chart tall" role="img" aria-label="Substitution curve"></div>
+      <p class="muted small">Hover points on desktop for details. On mobile, use the table below.</p>
+    </section>
+
+    <section class="panel">
+      <div class="panel-heading">
+        <div>
+          <p class="eyebrow">Rows behind the chart</p>
+          <h2>Model observations</h2>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Model</th>
+              <th>Benchmark</th>
+              <th>Score</th>
+              <th>Coverage</th>
+              <th>Price</th>
+              <th>Mode</th>
+              <th>Source</th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer class="shell footer">
+    <p>This is an MVP from public/aggregated rows. It deliberately treats saturation as useful: the floor is the point.</p>
+  </footer>
+
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

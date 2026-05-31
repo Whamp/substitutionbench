@@ -51,6 +51,8 @@ Current MVP data/plot generator:
 ```bash
 python -m pytest tests -q
 python scripts/build_mvp_metrics.py
+python scripts/build_site.py
+python -m http.server 8765 --directory docs
 ```
 
 Generated outputs:
@@ -60,6 +62,7 @@ Generated outputs:
 - `data/mvp_threshold_sensitivity.csv` — substitution floor recomputed at 1/3/5 percentage-point JND thresholds.
 - `reports/mvp-metrics.md` — human-readable MVP summary.
 - `reports/plots/*.svg` — static SVG substitution curves and cheapest-equivalent summary.
+- `docs/` — mobile-friendly static website dashboard fed by generated `docs/data.js`.
 
 ### Top-Level: Frontier Coverage %
 
