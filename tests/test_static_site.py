@@ -14,6 +14,7 @@ def test_static_site_exposes_mobile_first_dashboard_sections() -> None:
     assert "status-board" in html
     assert "plot deck" in html.lower()
     assert "value-map" in html
+    assert "benchmark-bars" in html
     assert "cost-economics" in html
     assert "substitution-leaderboard" in html
     assert "model-universe" in html
@@ -34,12 +35,15 @@ def test_static_site_uses_visual_price_and_gap_encodings() -> None:
 
     assert "savingsMultiple" in js
     assert "renderValueMap" in js
+    assert "renderBenchmarkBars" in js
     assert "renderCostEconomics" in js
     assert "renderSubstitutionCurve" in js
     assert "renderBenchmarkGuide" in js
     assert "renderModelUniverse" in js
     assert "qualificationLine" in js
     assert ".value-map" in css
+    assert ".bench-chart" in css
+    assert ".bench-bar" in css
     assert ".safe-zone" in css
     assert ".cost-stack" in css
     assert ".curve-bar-wrap" in css

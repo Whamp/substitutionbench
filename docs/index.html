@@ -74,14 +74,25 @@
           </div>
           <div id="value-map" class="value-map" role="img" aria-label="Scatter plot of model quality retained against cost saved"></div>
         </article>
-        <article class="plot-card" aria-labelledby="cost-title">
+        <article class="plot-card" aria-labelledby="benchmark-bars-title">
+          <div class="plot-head">
+            <div>
+              <p class="label">Benchmark field</p>
+              <h3 id="benchmark-bars-title">All models on this benchmark</h3>
+            </div>
+            <span class="chip violet">score bars</span>
+          </div>
+          <div id="benchmark-bars" class="benchmark-bars" role="img" aria-label="Vertical bar chart comparing model scores for the selected benchmark"></div>
+        </article>
+        <article class="plot-card wide-plot" aria-labelledby="cost-title">
           <div class="plot-head">
             <div>
               <p class="label">Token economics</p>
-              <h3 id="cost-title">Floor vs frontier price stack</h3>
+              <h3 id="cost-title">All candidate input/output prices</h3>
             </div>
+            <span class="chip green">lower is cheaper</span>
           </div>
-          <div id="cost-economics" class="cost-economics" role="img" aria-label="Stacked input and output token price comparison"></div>
+          <div id="cost-economics" class="cost-economics" role="img" aria-label="Stacked input and output token price comparison across all candidate models"></div>
         </article>
         <article class="plot-card wide-plot" aria-labelledby="leaderboard-title">
           <div class="plot-head">

@@ -414,30 +414,111 @@ function renderValueMap() {
   `;
 }
 
+function providerInitials(model) {
+  const text = String(model);
+  if (/claude|anthropic/i.test(text)) return 'A';
+  if (/gpt|o\d|openai/i.test(text)) return 'O';
+  if (/gemini|google/i.test(text)) return 'G';
+  if (/deepseek/i.test(text)) return 'D';
+  if (/qwen/i.test(text)) return 'Q';
+  if (/grok|xai/i.test(text)) return 'x';
+  if (/kimi/i.test(text)) return 'K';
+  if (/glm/i.test(text)) return 'Z';
+  if (/nemotron|nvidia/i.test(text)) return 'N';
+  return text.trim().slice(0, 1).toUpperCase();
+}
+
+function benchmarkBarLabel(model) {
+  return shortModel(model)
+    .replace('Qwen3 ', 'Qwen ')
+    .replace('DeepSeek V4 ', 'DS ')
+    .replace('Gemini ', 'Gemini ')
+    .replace('Claude ', 'Claude ')
+    .replace('Llama 3.3 ', 'Llama ')
+    .replace('Grok 3 Mini ', 'Grok ')
+    .replace('GPT-4.1 ', 'GPT-4.1 ')
+    .replace('A3B ', '')
+    .replace('A22B ', '')
+    .slice(0, 18);
+}
+
+function renderBenchmarkBars() {
+  const rows = rowsForBenchmark(state.benchmark).slice().sort((a, b) => b.score - a.score || (a.input_price_per_m ?? Infinity) - (b.input_price_per_m ?? Infinity));
+  const frontier = frontierRow(state.benchmark);
+  if (!frontier || !rows.length) {
+    document.getElementById('benchmark-bars').innerHTML = '<p class="muted">No model scores for this benchmark.</p>';
+    return;
+  }
+
+  const chartRows = rows.slice(0, 10);
+  const cutoff = frontier.frontier_score - state.threshold;
+  const minScore = Math.min(...chartRows.map((row) => row.score), cutoff);
+  const domainMin = Math.max(0, Math.floor((minScore - 5) / 5) * 5);
+  const scaleScore = (score) => clamp(((score - domainMin) / (frontier.frontier_score - domainMin)) * 100, 2, 100);
+  const cutoffHeight = scaleScore(cutoff);
+  const floor = cheapestEquivalent(state.benchmark);
+
+  const bars = chartRows.map((row, index) => {
+    const ok = equivalent(row);
+    const isFrontier = row.model === frontier.model;
+    const isFloor = row.model === floor?.model;
+    const tone = isFrontier ? 'frontier' : isFloor ? 'floor' : ok ? 'in-band' : 'out-band';
+    return `
+      <div class="bench-bar-column ${tone}" title="${escapeHtml(row.model)}: ${pct(row.score)} score, ${points(row.score_gap)} gap">
+        <div class="bench-bar-track">
+          <span class="bench-bar" style="height:${scaleScore(row.score)}%"><strong>${pct(row.score, row.score >= 10 ? 0 : 1)}</strong></span>
+        </div>
+        <span class="provider-badge">${escapeHtml(providerInitials(row.model))}</span>
+        <span class="bench-label">${escapeHtml(benchmarkBarLabel(row.model))}</span>
+      </div>
+    `;
+  }).join('');
+
+  document.getElementById('benchmark-bars').innerHTML = `
+    <div class="bench-toolbar">
+      <div class="chip-row">
+        <span class="chip mono">top ${chartRows.length} by score</span>
+        <span class="chip violet">frontier ${pct(frontier.frontier_score)}</span>
+        <span class="chip green">JND cutoff ${pct(cutoff)}</span>
+      </div>
+      <div class="curve-axis"><span>${pct(domainMin, 0)}</span><span>${escapeHtml(state.benchmark)} score</span><span>${pct(frontier.frontier_score)}</span></div>
+    </div>
+    <div class="bench-chart" style="--items:${chartRows.length}">
+      <span class="bench-cutoff" style="bottom:${98 + (cutoffHeight * 2.1)}px"><span>${state.threshold} pt cutoff</span></span>
+      ${bars}
+    </div>
+  `;
+}
+
 function renderCostEconomics() {
   const status = substitutionStatus(state.benchmark);
-  const comparison = [
-    { role: status.action === 'substitute' ? 'Floor' : 'Required frontier', row: status.floor, cls: status.action === 'substitute' ? 'floor' : 'frontier' },
-    { role: 'Frontier anchor', row: status.frontier, cls: 'frontier' },
-  ].filter((item) => item.row);
-  if (!comparison.length) {
+  const frontier = status.frontier;
+  const floor = status.floor;
+  const rows = pricedRows(state.benchmark)
+    .map((row) => ({ row, cost: tokenStackCost(row) }))
+    .filter((item) => item.cost && item.cost.total > 0)
+    .sort((a, b) => a.cost.total - b.cost.total || b.row.score - a.row.score)
+    .slice(0, 10);
+  if (!rows.length) {
     document.getElementById('cost-economics').innerHTML = '<p class="muted">No cost rows for this benchmark.</p>';
     return;
   }
-  const stacks = comparison.map((item) => ({ ...item, cost: tokenStackCost(item.row) })).filter((item) => item.cost);
-  const maxTotal = Math.max(...stacks.map((item) => item.cost.total), 1);
+  const maxTotal = Math.max(...rows.map((item) => item.cost.total), 1);
   const logMax = Math.log10(maxTotal + 1);
   document.getElementById('cost-economics').innerHTML = `
-    <div class="cost-legend"><span><i class="input-key"></i>input</span><span><i class="output-key"></i>output</span></div>
-    ${stacks.map(({ role, row, cost, cls }) => {
-      const totalWidth = Math.max(10, (Math.log10(cost.total + 1) / logMax) * 100);
+    <div class="cost-legend"><span><i class="input-key"></i>input</span><span><i class="output-key"></i>output</span><span class="muted">sorted by blended $/1M tokens</span></div>
+    ${rows.map(({ row, cost }, index) => {
+      const totalWidth = Math.max(6, (Math.log10(cost.total + 1) / logMax) * 100);
       const inputWidth = totalWidth * (cost.input / cost.total);
       const outputWidth = totalWidth * (cost.output / cost.total);
+      const isFrontier = row.model === frontier?.model;
+      const isFloor = row.model === floor?.model;
+      const cls = isFrontier ? 'frontier' : isFloor ? 'floor' : equivalent(row) ? 'in-band' : 'out-band';
       return `
         <article class="cost-row ${escapeHtml(cls)}">
           <div class="cost-row-head">
-            <strong>${escapeHtml(role)}</strong>
-            <span>${escapeHtml(shortModel(row.model))}</span>
+            <strong>${index + 1}. ${escapeHtml(shortModel(row.model))}</strong>
+            <span>${isFrontier ? 'frontier' : isFloor ? 'floor' : equivalent(row) ? 'in band' : 'below'}</span>
           </div>
           <div class="cost-stack" aria-label="${escapeHtml(row.model)} input ${dollars(cost.input)} output ${dollars(cost.output)}">
             <span class="input-seg" style="width:${inputWidth}%"></span>
@@ -447,7 +528,7 @@ function renderCostEconomics() {
         </article>
       `;
     }).join('')}
-    <p class="plot-footnote">Bars are log-compressed so cheap floors remain visible. Blended price assumes 1M input + 1M output tokens; workload mix will change the exact bill.</p>
+    <p class="plot-footnote">Bars are log-compressed so cheap floors remain visible next to frontier pricing. This is the Artificial Analysis move re-aimed at substitution: compare the whole field first, then ask which cheap bars are inside the JND band.</p>
   `;
 }
 
@@ -561,6 +642,7 @@ function renderModelUniverse() {
 function renderSelectedBenchmark() {
   renderValueSummary();
   renderValueMap();
+  renderBenchmarkBars();
   renderCostEconomics();
   renderSubstitutionCurve();
   renderObservationCards();
