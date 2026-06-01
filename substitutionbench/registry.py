@@ -435,7 +435,7 @@ def ingest_artificial_analysis_payload(
                     run_id,
                     score,
                     fetched_at or now_utc(),
-                    None,
+                    eval_mode_for_aa(key),
                     effort_from_name(str(model.get("name") or "")),
                     None,
                     endpoint,
@@ -460,6 +460,12 @@ def freshness_label_for_aa(key: str) -> str:
     if key in {"math_500", "aime", "aime_25", "mmlu_pro"}:
         return "may_be_saturated_or_not_refreshed"
     return "current_from_source"
+
+
+def eval_mode_for_aa(key: str) -> str | None:
+    if key == "livecodebench":
+        return "generation:aggregate_mean_pass_at_1"
+    return None
 
 
 def ingest_livecodebench_payload(
@@ -595,6 +601,20 @@ def source_priority(source_name: str, benchmark_key: str) -> int:
     return 10
 
 
+def protocol_key(row: sqlite3.Row) -> str:
+    benchmark_key = row["benchmark_key"]
+    if benchmark_key == "livecodebench":
+        return ":".join(
+            [
+                benchmark_key,
+                str(row["score_unit"] or "unknown_unit"),
+                str(row["eval_mode"] or "unknown_eval_mode"),
+                str(row["scaffold_type"] or "unknown_scaffold"),
+            ]
+        )
+    return benchmark_key
+
+
 def resolve_scores(conn: sqlite3.Connection, index_version: str = "substitutionbench-v1") -> None:
     init_db(conn)
     conn.execute("delete from benchmark_resolutions where index_version = ?", (index_version,))
@@ -617,14 +637,20 @@ def resolve_scores(conn: sqlite3.Connection, index_version: str = "substitutionb
         ).fetchall()
         if not observations:
             continue
-        ranked = sorted(observations, key=lambda row: (source_priority(row["source_name"], row["benchmark_key"]), -row["id"]))
+        ranked_all = sorted(observations, key=lambda row: (source_priority(row["source_name"], row["benchmark_key"]), -row["id"]))
+        preferred_protocol = protocol_key(ranked_all[0])
+        compatible_observations = [row for row in observations if protocol_key(row) == preferred_protocol]
+        incompatible_count = len(observations) - len(compatible_observations)
+        ranked = sorted(compatible_observations, key=lambda row: (source_priority(row["source_name"], row["benchmark_key"]), -row["id"]))
         winner = ranked[0]
-        distinct_alternates = {(row["source_name"], round(float(row["score"]), 12)) for row in observations}
+        distinct_alternates = {(row["source_name"], round(float(row["score"]), 12)) for row in compatible_observations}
         conflict_count = max(0, len(distinct_alternates) - 1)
         policy = "preferred_source_hierarchy"
-        reason = f"Selected {winner['source_name']} for {winner['benchmark_key']} via preferred-source hierarchy."
+        reason = f"Selected {winner['source_name']} for {winner['benchmark_key']} via preferred-source hierarchy among protocol-equivalent observations ({preferred_protocol})."
         if conflict_count:
             reason += f" Preserved {conflict_count} alternate observation(s)."
+        if incompatible_count:
+            reason += f" Preserved {incompatible_count} protocol-incompatible observation(s) without collapsing them into the resolved score."
         conn.execute(
             """
             insert into benchmark_resolutions(
@@ -804,27 +830,13 @@ def build_index_payload(conn: sqlite3.Connection, index_key: str, label: str, co
         "no_substitute": not any(model.get("state") == "substitute" for model in models),
         "total_models": len(models),
     }
-    # Static dashboard payloads should stay reviewable. Keep the primary ranking,
-    # plus enough partial/unknown/conflict examples for transparency states.
-    display_models = []
-    seen_ids: set[int] = set()
-    for bucket in (
-        models[:80],
-        [model for model in models if model["coverage_state"] == "partial"][:30],
-        [model for model in models if model["coverage_state"] == "unknown"][:10],
-        [model for model in models if model.get("conflict_count", 0)][:20],
-    ):
-        for model in bucket:
-            if model["model_id"] not in seen_ids:
-                display_models.append(model)
-                seen_ids.add(model["model_id"])
     return {
         "key": index_key,
         "label": label,
         "threshold": DEFAULT_THRESHOLD,
         "components": [{"key": component.key, "label": component.label, "weight": component.weight, "benchmarks": list(component.benchmarks)} for component in component_list],
         "substitution_summary": summary,
-        "models": display_models,
+        "models": models,
     }
 
 

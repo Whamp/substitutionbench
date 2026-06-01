@@ -4,6 +4,7 @@ import json
 import sqlite3
 from pathlib import Path
 
+import scripts.build_dashboard_data as dashboard_builder
 from substitutionbench.registry import (
     DEFAULT_COMPONENTS,
     export_dashboard_payload,
@@ -230,6 +231,78 @@ def test_livecodebench_official_rows_are_preserved_and_preferred_for_equivalent_
     aa_source = conn.execute("select attribution_url, notes from sources where name = 'artificial_analysis'").fetchone()
     assert aa_source[0] == "https://artificialanalysis.ai/"
     assert "Preferred source" in aa_source[1]
+
+
+def test_livecodebench_resolution_does_not_collapse_protocol_incompatible_scores(tmp_path: Path) -> None:
+    conn = make_registry(tmp_path)
+    conn.execute(
+        """
+        update benchmark_observations
+        set eval_mode = 'custom_livecodebench_variant'
+        where benchmark_id = (select id from benchmarks where key = 'livecodebench')
+          and model_id = (select id from models where canonical_name = 'Cheap Sub')
+        """
+    )
+    ingest_livecodebench_payload(
+        conn,
+        {
+            "models": [{"model_name": "cheap-sub", "model_repr": "Cheap Sub", "release_date": 1719705600000}],
+            "performances": [
+                {"model": "Cheap Sub", "date": 1719705600000, "difficulty": "easy", "pass@1": 90.0, "question_id": "1"},
+                {"model": "Cheap Sub", "date": 1719705600000, "difficulty": "hard", "pass@1": 70.0, "question_id": "2"},
+            ],
+        },
+        endpoint="fixture://livecodebench",
+        fetched_at="2026-06-01T00:00:00+00:00",
+        raw_path="fixtures/lcb.json",
+        checksum="fixture-lcb",
+        from_cache=False,
+    )
+    resolve_scores(conn)
+
+    row = conn.execute(
+        """
+        select br.conflict_count, br.reason, s.name as winning_source
+        from benchmark_resolutions br
+        join benchmark_observations bo on bo.id = br.observation_id
+        join sources s on s.id = bo.source_id
+        join models m on m.id = br.model_id
+        join benchmarks b on b.id = br.benchmark_id
+        where m.canonical_name = 'Cheap Sub' and b.key = 'livecodebench'
+        """
+    ).fetchone()
+
+    assert row["winning_source"] == "livecodebench"
+    assert row["conflict_count"] == 0
+    assert "protocol-incompatible" in row["reason"]
+
+
+def test_build_preserves_existing_registry_file_instead_of_recreating_it(tmp_path: Path, monkeypatch) -> None:
+    db_path = tmp_path / "substitutionbench.sqlite"
+    output_path = tmp_path / "data.js"
+    conn = sqlite3.connect(db_path)
+    conn.execute("create table sentinel(value text not null)")
+    conn.execute("insert into sentinel(value) values ('history')")
+    conn.commit()
+    conn.close()
+
+    monkeypatch.setattr(
+        dashboard_builder,
+        "load_or_fetch_artificial_analysis",
+        lambda refresh: (aa_payload(), dashboard_builder.CACHE_DIR / "fixture-aa.json", True),
+    )
+    monkeypatch.setattr(
+        dashboard_builder,
+        "load_or_fetch_livecodebench",
+        lambda refresh: ({"models": [], "performances": []}, dashboard_builder.CACHE_DIR / "fixture-lcb.json", True),
+    )
+
+    summary = dashboard_builder.build(refresh=False, db_path=db_path, output_path=output_path)
+
+    conn = sqlite3.connect(db_path)
+    assert conn.execute("select value from sentinel").fetchone()[0] == "history"
+    assert summary["fetch_runs"] == 2
+    assert output_path.exists()
 
 
 def test_default_components_are_equal_weight_and_domain_weighted_not_raw_benchmark_weighted() -> None:

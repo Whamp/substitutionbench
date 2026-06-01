@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import subprocess
+import textwrap
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -55,6 +57,7 @@ def test_generated_data_matches_substitutionbench_index_contract() -> None:
     assert {component["weight"] for component in index["components"]} == {0.25}
     assert all("frontier_ratio" in model for model in index["models"])
     assert all(model["coverage_state"] in {"complete", "partial", "unknown"} for model in index["models"])
+    assert len(index["models"]) == index["substitution_summary"]["total_models"]
 
 
 def test_generated_data_supports_cost_provenance_conflict_and_no_substitute_states() -> None:
@@ -78,3 +81,50 @@ def test_no_credentials_or_local_cache_paths_are_emitted_to_static_assets() -> N
         assert "ARTIFICIAL_ANALYSIS_API_KEY" not in text
         assert "x-api-key" not in text
         assert ".env" not in text
+
+
+def test_dashboard_recomputes_summary_counts_when_threshold_changes() -> None:
+    app_js = ROOT / "docs" / "app.js"
+    script = textwrap.dedent(
+        f"""
+        const fs = require('fs');
+        const vm = require('vm');
+        const elements = {{}};
+        const document = {{
+          getElementById(id) {{
+            if (!elements[id]) elements[id] = {{ innerHTML: '', textContent: '', hidden: false, value: '', oninput: null, onchange: null }};
+            return elements[id];
+          }}
+        }};
+        const payload = {{
+          default_index: 'fixture-index',
+          default_threshold: 0.95,
+          indexes: [{{
+            key: 'fixture-index',
+            label: 'Fixture Index',
+            components: [],
+            substitution_summary: {{ complete: 3, partial: 0, unknown: 0, qualifying: 1, substitutes: 0, no_substitute: true, total_models: 3 }},
+            models: [
+              {{ model: 'Frontier', frontier_ratio: 1.0, coverage_state: 'complete', price_state: 'valid', estimated_task_cost: 10, components: [], conflict_count: 0 }},
+              {{ model: 'Cheap 92', frontier_ratio: 0.92, coverage_state: 'complete', price_state: 'valid', estimated_task_cost: 1, components: [], conflict_count: 0 }},
+              {{ model: 'Cheap 89', frontier_ratio: 0.89, coverage_state: 'complete', price_state: 'valid', estimated_task_cost: 1, components: [], conflict_count: 0 }}
+            ]
+          }}],
+          source_summary: [],
+          conflict_examples: [],
+          cache_freshness: {{ policy: 'fixture', latest_fetch: null }}
+        }};
+        const context = {{ console, window: {{ SUBSTITUTION_BENCH_DATA: payload }}, document, Number, Math }};
+        vm.createContext(context);
+        vm.runInContext(fs.readFileSync({str(app_js)!r}, 'utf8'), context);
+        context.window.__SUBSTITUTION_BENCH_TEST__.state.threshold = 0.90;
+        context.window.__SUBSTITUTION_BENCH_TEST__.renderHeadline();
+        context.window.__SUBSTITUTION_BENCH_TEST__.renderMetricStrip();
+        const headline = elements['headline-chips'].innerHTML;
+        const metrics = elements['metric-strip'].innerHTML;
+        if (!headline.includes('1 substitutes')) throw new Error('headline substitute count did not update: ' + headline);
+        if (!headline.includes('2/3 qualify')) throw new Error('headline qualifying count did not update: ' + headline);
+        if (!metrics.includes('2/3')) throw new Error('metric strip qualifying count did not update: ' + metrics);
+        """
+    )
+    subprocess.run(["node", "-e", script], check=True)

@@ -105,8 +105,6 @@ def build(refresh: bool = False, db_path: Path = DB_PATH, output_path: Path = DA
     lcb_payload, lcb_path, lcb_from_cache = load_or_fetch_livecodebench(refresh)
 
     db_path.parent.mkdir(parents=True, exist_ok=True)
-    if db_path.exists():
-        db_path.unlink()
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     init_db(conn)

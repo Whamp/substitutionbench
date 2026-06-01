@@ -44,17 +44,31 @@ function thresholdModels(index = activeIndex()) {
 
 function classifyForThreshold(model, index = activeIndex()) {
   if (model.frontier_ratio === null) return 'unknown';
-  const maxRatio = Math.max(...modelsWithQuality(index).map((item) => item.frontier_ratio));
+  const qualityModels = modelsWithQuality(index);
+  if (!qualityModels.length) return 'unknown';
+  const maxRatio = Math.max(...qualityModels.map((item) => item.frontier_ratio));
   if (Math.abs(model.frontier_ratio - maxRatio) < 1e-9) return 'frontier';
   if (model.frontier_ratio < state.threshold) return 'below_cutoff';
   if (model.price_state === 'valid' && model.estimated_task_cost !== null) {
-    const frontierCosts = modelsWithQuality(index)
+    const frontierCosts = qualityModels
       .filter((item) => Math.abs(item.frontier_ratio - maxRatio) < 1e-9 && item.estimated_task_cost !== null)
       .map((item) => item.estimated_task_cost);
     const frontierCost = frontierCosts.length ? Math.min(...frontierCosts) : null;
     if (frontierCost !== null && model.estimated_task_cost < frontierCost) return 'substitute';
   }
   return 'quality_expensive';
+}
+
+function summaryForThreshold(index = activeIndex()) {
+  const completeModels = modelsWithQuality(index);
+  const classified = index.models.map((model) => classifyForThreshold(model, index));
+  return {
+    complete: completeModels.length,
+    partial: index.models.filter((model) => model.coverage_state === 'partial').length,
+    unknown: index.models.filter((model) => model.coverage_state === 'unknown').length,
+    qualifying: completeModels.filter((model) => model.frontier_ratio >= state.threshold).length,
+    substitutes: classified.filter((item) => item === 'substitute').length,
+  };
 }
 
 function stateLabel(stateName) {
@@ -107,8 +121,9 @@ function renderHeadline() {
     .filter((model) => model.live_state === 'substitute')
     .sort((a, b) => a.estimated_task_cost - b.estimated_task_cost);
   const best = candidates[0];
-  const complete = index.substitution_summary.complete;
-  const qualifying = index.substitution_summary.qualifying;
+  const summary = summaryForThreshold(index);
+  const complete = summary.complete;
+  const qualifying = summary.qualifying;
   document.getElementById('headline-price').textContent = best ? money(best.estimated_task_cost) : 'No substitute yet';
   document.getElementById('headline-model').textContent = best
     ? `${best.model} clears ${pct(state.threshold, 0)} on ${index.label}`
@@ -167,9 +182,9 @@ function shortName(name) {
 
 function renderMetricStrip() {
   const index = activeIndex();
-  const complete = index.substitution_summary.complete;
-  const qualifying = index.substitution_summary.qualifying;
-  const substitutes = index.substitution_summary.substitutes;
+  const summary = summaryForThreshold(index);
+  const complete = summary.complete;
+  const qualifying = summary.qualifying;
   const conflicts = index.models.reduce((sum, model) => sum + Number(model.conflict_count || 0), 0);
   document.getElementById('metric-strip').innerHTML = [
     { label: 'Active index', value: index.label, copy: 'One selected denominator for the hero chart' },
@@ -281,6 +296,17 @@ function renderAll(resetControls = true) {
   renderCostRanking();
   renderComponentDrilldown();
   renderSourceTransparency();
+}
+
+if (typeof window !== 'undefined') {
+  window.__SUBSTITUTION_BENCH_TEST__ = {
+    activeIndex,
+    classifyForThreshold,
+    renderHeadline,
+    renderMetricStrip,
+    state,
+    summaryForThreshold,
+  };
 }
 
 renderAll();
