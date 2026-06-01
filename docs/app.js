@@ -42,6 +42,13 @@ function thresholdModels(index = activeIndex()) {
   return modelsWithQuality(index).filter((model) => model.frontier_ratio >= state.threshold);
 }
 
+function heroChartLimit() {
+  if (typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 820px)').matches) {
+    return 30;
+  }
+  return 12;
+}
+
 function classifyForThreshold(model, index = activeIndex()) {
   if (model.frontier_ratio === null) return 'unknown';
   const qualityModels = modelsWithQuality(index);
@@ -150,7 +157,7 @@ function renderNoSubstituteState() {
 
 function renderIndexHeroChart() {
   const index = activeIndex();
-  const complete = modelsWithQuality(index).slice(0, 30);
+  const complete = modelsWithQuality(index).slice(0, heroChartLimit());
   const qualifyingCount = complete.filter((model) => model.frontier_ratio >= state.threshold).length;
   const maxRatio = Math.max(...complete.map((model) => model.frontier_ratio), 1);
   const bars = complete.map((model, position) => {

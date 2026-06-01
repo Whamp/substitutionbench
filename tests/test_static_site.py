@@ -83,6 +83,24 @@ def test_no_credentials_or_local_cache_paths_are_emitted_to_static_assets() -> N
         assert ".env" not in text
 
 
+def test_laptop_layout_constrains_wide_dashboard_sections() -> None:
+    css = (ROOT / "docs" / "styles.css").read_text()
+
+    # Regression coverage for laptop-width dogfood: CSS grid items default to
+    # min-width:auto, which let the 30-column hero chart force the whole page to
+    # ~2600px wide. The chart should scroll inside its panel, not the page.
+    assert ".panel { border-radius: var(--radius-lg); padding: var(--space-5); overflow: hidden; }" in css
+    assert ".metric-strip { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));" in css
+    assert ".component-drilldown { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));" in css
+    assert ".transparency-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));" in css
+    assert "grid-auto-columns: minmax(72px, 1fr)" in css
+    assert "overscroll-behavior-inline: contain" in css
+    js = (ROOT / "docs" / "app.js").read_text()
+    assert "function heroChartLimit()" in js
+    assert "return 12;" in js
+    assert "slice(0, heroChartLimit())" in js
+
+
 def test_dashboard_recomputes_summary_counts_when_threshold_changes() -> None:
     app_js = ROOT / "docs" / "app.js"
     script = textwrap.dedent(
