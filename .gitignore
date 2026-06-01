@@ -4,3 +4,8 @@
 __pycache__/
 *.py[cod]
 .pytest_cache/
+data/artificial_analysis/
+data/cache/
+data/registry/
+*.sqlite
+*.sqlite3

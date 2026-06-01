@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>SubstitutionBench MVP</title>
-  <meta name="description" content="Find the cheapest model that reaches frontier-equivalent capability on saturated benchmarks." />
+  <title>SubstitutionBench Index v1</title>
+  <meta name="description" content="Find cheaper LLM substitutes that are close enough to frontier quality, with provenance and conflict visibility." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%2308090b'/%3E%3Ccircle cx='24' cy='24' r='14' fill='%237772f8'/%3E%3Ccircle cx='40' cy='40' r='14' fill='%2325c083'/%3E%3C/svg%3E" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -22,133 +22,79 @@
   <main id="main-content" class="shell app-shell">
     <section class="answer-panel" aria-labelledby="answer-title">
       <div class="answer-copy">
-        <p class="label">Selected JND band</p>
-        <div class="threshold-control" role="group" aria-label="JND threshold selector">
-          <button class="threshold" data-threshold="1">1 pt</button>
-          <button class="threshold active" data-threshold="3">3 pts</button>
-          <button class="threshold" data-threshold="5">5 pts</button>
+        <p class="label">SubstitutionBench Index v1</p>
+        <h1 id="answer-title">Can I safely substitute, with what, and why?</h1>
+        <p id="frontier-explainer" class="hero-copy">Models are compared by average % of frontier quality. The default cutoff is 95% of a top-3 frontier anchor.</p>
+        <div class="control-grid">
+          <label class="select-label">Active index
+            <select id="index-selector" aria-label="Select active index"></select>
+          </label>
+          <label class="range-label">Quality cutoff
+            <span id="threshold-value" class="mono">95%</span>
+            <input id="threshold-slider" type="range" min="0.90" max="0.98" step="0.01" value="0.95" aria-label="Frontier quality threshold" />
+          </label>
         </div>
-        <h1 id="answer-title">Substitution floors, not leaderboards.</h1>
-        <p id="jnd-explainer" class="jnd-copy">JND, or just-noticeable difference, means how much worse a cheaper model can score and still count as equivalent.</p>
       </div>
       <article class="headline-card" aria-live="polite">
-        <span class="label">Cheapest in-band floor</span>
+        <span class="label">Cheapest qualifying substitute</span>
         <strong id="headline-price">Loading</strong>
-        <p id="headline-model">Computing current MVP rows.</p>
+        <p id="headline-model">Computing resolved scores.</p>
         <div id="headline-chips" class="chip-row"></div>
       </article>
     </section>
 
-    <section class="panel primary-panel" aria-labelledby="status-title">
+    <section class="panel primary-panel" aria-labelledby="hero-chart-title">
       <div class="section-head compact">
         <div>
-          <p class="label">Story board</p>
-          <h2 id="status-title">What substitutes now?</h2>
+          <p class="label">One hero chart</p>
+          <h2 id="hero-chart-title">Average % of frontier by model</h2>
         </div>
-        <p class="caption">Price is the visual axis. Coverage is the qualifier.</p>
+        <p class="caption">Sorted by quality. A vertical separator marks the selected cutoff.</p>
       </div>
-      <div id="status-board" class="status-board"></div>
+      <div id="no-substitute-state" class="state-callout" hidden>No substitute yet</div>
+      <div id="index-hero-chart" class="index-hero-chart" role="img" aria-label="Bar chart of model percent of frontier for the selected index"></div>
     </section>
 
-    <section class="metric-strip" id="metric-strip" aria-label="Current dashboard metrics"></section>
+    <section class="metric-strip" id="metric-strip" aria-label="Current index metrics"></section>
 
-    <section class="panel analysis-deck" aria-labelledby="deck-title">
-      <div class="section-head">
-        <div>
-          <p class="label">Plot deck</p>
-          <h2 id="deck-title">Artificial Analysis-style plots, rebuilt for substitution</h2>
-        </div>
-        <label class="select-label">Benchmark
-          <select id="benchmark-select"></select>
-        </label>
-      </div>
-      <div id="value-summary" class="ladder-summary"></div>
-      <div class="plot-grid">
-        <article class="plot-card hero-plot" aria-labelledby="value-map-title">
-          <div class="plot-head">
-            <div>
-              <p class="label">Value map</p>
-              <h3 id="value-map-title">Quality retained vs cost saved</h3>
-            </div>
-            <span class="chip green">upper-right = substitute zone</span>
-          </div>
-          <div id="value-map" class="value-map" role="img" aria-label="Scatter plot of model quality retained against cost saved"></div>
-        </article>
-        <article class="plot-card" aria-labelledby="benchmark-bars-title">
-          <div class="plot-head">
-            <div>
-              <p class="label">Benchmark field</p>
-              <h3 id="benchmark-bars-title">All models on this benchmark</h3>
-            </div>
-            <span class="chip violet">score bars</span>
-          </div>
-          <div id="benchmark-bars" class="benchmark-bars" role="img" aria-label="Vertical bar chart comparing model scores for the selected benchmark"></div>
-        </article>
-        <article class="plot-card wide-plot" aria-labelledby="cost-title">
-          <div class="plot-head">
-            <div>
-              <p class="label">Token economics</p>
-              <h3 id="cost-title">All candidate input/output prices</h3>
-            </div>
-            <span class="chip green">lower is cheaper</span>
-          </div>
-          <div id="cost-economics" class="cost-economics" role="img" aria-label="Stacked input and output token price comparison across all candidate models"></div>
-        </article>
-        <article class="plot-card wide-plot" aria-labelledby="leaderboard-title">
-          <div class="plot-head">
-            <div>
-              <p class="label">Leaderboard</p>
-              <h3 id="leaderboard-title">Price-sorted substitution candidates</h3>
-            </div>
-            <span class="chip violet">cutoff drawn on every row</span>
-          </div>
-          <div id="substitution-leaderboard" class="substitution-curve" role="img" aria-label="Artificial Analysis style bar chart of model scores and JND cutoff"></div>
-        </article>
-      </div>
-    </section>
-
-    <section class="panel" aria-labelledby="benchmark-guide-title">
+    <section class="panel" aria-labelledby="cost-title">
       <div class="section-head compact">
         <div>
-          <p class="label">Benchmark guide</p>
-          <h2 id="benchmark-guide-title">What kind of questions are these?</h2>
+          <p class="label">Economics</p>
+          <h2 id="cost-title">API task cost ranking</h2>
         </div>
-        <p class="caption">Each floor only applies to the task style represented by that benchmark.</p>
+        <p class="caption">Only quality-qualified non-frontier models can be substitutes.</p>
       </div>
-      <div id="benchmark-guide" class="benchmark-guide"></div>
+      <div id="cost-ranking" class="cost-ranking"></div>
     </section>
 
-    <section class="panel details-panel" aria-labelledby="universe-title">
+    <section class="panel" aria-labelledby="components-title">
+      <div class="section-head compact">
+        <div>
+          <p class="label">Index construction</p>
+          <h2 id="components-title">Component drilldown</h2>
+        </div>
+        <p class="caption">SubstitutionBench Index v1 averages General, Math, Coding, and Agentic components.</p>
+      </div>
+      <div id="component-drilldown" class="component-drilldown"></div>
+    </section>
+
+    <section class="panel details-panel" aria-labelledby="transparency-title">
       <details open>
         <summary>
           <span>
-            <span class="label">Analysis universe</span>
-            <strong id="universe-title">Models included in this MVP</strong>
+            <span class="label">Source transparency</span>
+            <strong id="transparency-title">Cache freshness, source mix, and conflicts</strong>
           </span>
-          <span class="summary-hint">Rows, sources, and model lists</span>
+          <span class="summary-hint">Resolved scores only</span>
         </summary>
-        <div id="model-universe" class="model-universe"></div>
-      </details>
-    </section>
-
-    <section class="panel details-panel" aria-labelledby="rows-title">
-      <details open>
-        <summary>
-          <span>
-            <span class="label">Rows</span>
-            <strong id="rows-title">Observation cards</strong>
-          </span>
-          <span class="summary-hint">Filtered by selected benchmark</span>
-        </summary>
-        <div id="observation-cards" class="observation-cards"></div>
+        <div id="source-transparency" class="source-transparency"></div>
       </details>
     </section>
   </main>
 
-  <div class="mobile-threshold" aria-label="Mobile JND threshold selector"></div>
-
   <footer class="shell footer">
-    MVP data from public and aggregated benchmark rows. Saturation is treated as signal: it marks where frontier spend stops buying visible capability.
+    Static dashboard generated from local SQLite resolved scores. Artificial Analysis attribution: <a href="https://artificialanalysis.ai/">artificialanalysis.ai</a>.
   </footer>
 
   <script src="data.js"></script>

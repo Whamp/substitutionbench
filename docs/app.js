@@ -1,39 +1,8 @@
-const state = {
-  threshold: 3,
-  benchmark: 'MATH-500',
-};
-
 const data = window.SUBSTITUTION_BENCH_DATA;
-const observations = data.observations;
-const benchmarks = Object.keys(data.configs);
-const thresholds = data.thresholds;
 
-const benchmarkMeta = {
-  'MATH-500': {
-    plain: 'High-school competition math: algebra, geometry, number theory, precalculus, and counting problems with exact answers.',
-    example: 'Example shape: convert coordinates, count divisors, solve a geometry volume problem, or reduce a finite/infinite algebra expression.',
-    substitution: 'Good for tasks where the answer is checkable and the reasoning path is mostly mathematical.',
-    source: '500-problem MATH subset used by OpenAI in Let\u2019s Verify Step by Step.',
-  },
-  'GPQA Diamond': {
-    plain: 'Graduate-level, Google-proof science multiple choice across biology, chemistry, and physics.',
-    example: 'Example shape: choose the correct mechanism, physical relationship, or experimental implication when surface web search is not enough.',
-    substitution: 'Good for hard expert science QA, not ordinary trivia or broad web lookup.',
-    source: '198-question Diamond split from GPQA, written by domain experts.',
-  },
-  'SWE-bench Verified': {
-    plain: 'Real GitHub software issues where the model must edit a repository and produce a patch that passes tests.',
-    example: 'Example shape: given a bug report and codebase, change Python code so the failing behavior is fixed without breaking tests.',
-    substitution: 'Good for agentic coding and repo repair. This is where frontier models still buy capability in the MVP data.',
-    source: '500 SWE-bench tasks confirmed by software engineers as solvable.',
-  },
-};
-
-const sourceLabels = {
-  independent: 'independent eval',
-  aggregator: 'aggregator row',
-  vendor: 'vendor row',
-  provider: 'provider row',
+const state = {
+  activeIndex: data.default_index,
+  threshold: data.default_threshold,
 };
 
 function escapeHtml(value) {
@@ -45,180 +14,168 @@ function escapeHtml(value) {
     .replaceAll("'", '&#039;');
 }
 
-function dollars(value) {
-  if (value === null || value === undefined || Number.isNaN(Number(value))) return 'unknown';
-  return `$${Number(value).toLocaleString(undefined, { maximumFractionDigits: 4 })}/M`;
-}
-
 function pct(value, digits = 1) {
-  return `${Number(value).toFixed(digits)}%`;
+  if (value === null || value === undefined || Number.isNaN(Number(value))) return 'unknown';
+  return `${(Number(value) * 100).toFixed(digits)}%`;
 }
 
-function points(value) {
-  return `${Number(value).toFixed(Number(value) % 1 === 0 ? 0 : 1)} pts`;
+function money(value) {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) return 'unknown';
+  return `$${Number(value).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
 }
 
-function params(row) {
-  const p = row.active_params_b ?? row.total_params_b;
-  return p ? `${p}B${row.active_params_b ? ' active' : ''}` : 'unknown size';
+function priceLabel(model) {
+  if (model.price_state === 'unknown_zero') return 'price reported as zero — review needed';
+  if (model.price_state !== 'valid') return 'price unknown';
+  return `${money(model.estimated_task_cost)} / task`;
 }
 
-function shortModel(model) {
-  return String(model)
-    .replace('Thinking', 'think')
-    .replace('non-thinking', 'base')
-    .replace('Verified', '')
-    .replace('Preview', '')
-    .trim();
+function activeIndex() {
+  return data.indexes.find((index) => index.key === state.activeIndex) ?? data.indexes[0];
 }
 
-function rowsForBenchmark(benchmark) {
-  return observations.filter((row) => row.benchmark === benchmark);
+function modelsWithQuality(index = activeIndex()) {
+  return index.models.filter((model) => model.frontier_ratio !== null && model.coverage_state === 'complete');
 }
 
-function equivalent(row, threshold = state.threshold) {
-  return row.frontier_score - row.score <= threshold;
+function thresholdModels(index = activeIndex()) {
+  return modelsWithQuality(index).filter((model) => model.frontier_ratio >= state.threshold);
 }
 
-function pricedRows(benchmark) {
-  return rowsForBenchmark(benchmark).filter((row) => row.input_price_per_m !== null);
-}
-
-function uniqueModels(rows = observations) {
-  return Array.from(new Set(rows.map((row) => row.model))).sort((a, b) => a.localeCompare(b));
-}
-
-function countBy(rows, key) {
-  return rows.reduce((acc, row) => {
-    const value = row[key] || 'unknown';
-    acc[value] = (acc[value] ?? 0) + 1;
-    return acc;
-  }, {});
-}
-
-function qualificationLine(benchmark, threshold = state.threshold) {
-  const frontier = frontierRow(benchmark);
-  if (!frontier) return `A ${threshold} pt JND band means a model may score ${threshold} points below the frontier and still qualify.`;
-  const cutoff = frontier.frontier_score - threshold;
-  return `JND, or just-noticeable difference, means how much worse a cheaper model can score and still count as equivalent. At ${threshold} pts on ${benchmark}, frontier scores ${pct(frontier.frontier_score)}; any model at ${pct(cutoff)} or higher is in band.`;
-}
-
-function cheapestEquivalent(benchmark, threshold = state.threshold) {
-  return pricedRows(benchmark)
-    .filter((row) => equivalent(row, threshold))
-    .sort((a, b) => a.input_price_per_m - b.input_price_per_m || b.score - a.score)[0] ?? null;
-}
-
-function smallestEquivalent(benchmark, threshold = state.threshold) {
-  return rowsForBenchmark(benchmark)
-    .filter((row) => equivalent(row, threshold) && (row.active_params_b ?? row.total_params_b) !== null)
-    .sort((a, b) => (a.active_params_b ?? a.total_params_b) - (b.active_params_b ?? b.total_params_b))[0] ?? null;
-}
-
-function frontierRow(benchmark) {
-  const cfg = data.configs[benchmark];
-  return rowsForBenchmark(benchmark).find((row) => row.model === cfg.frontier_model)
-    ?? rowsForBenchmark(benchmark).slice().sort((a, b) => b.score - a.score)[0]
-    ?? null;
-}
-
-function isSaturatedKind(kind) {
-  return kind === 'saturated' || kind === 'near_saturated';
-}
-
-function substitutionStatus(benchmark, threshold = state.threshold) {
-  const floor = cheapestEquivalent(benchmark, threshold);
-  const frontier = frontierRow(benchmark);
-  const cfg = data.configs[benchmark];
-  if (!floor) {
-    return { benchmark, label: 'No priced floor', tone: 'red', action: 'frontier', copy: 'Missing priced candidate rows', floor, frontier, cfg };
+function classifyForThreshold(model, index = activeIndex()) {
+  if (model.frontier_ratio === null) return 'unknown';
+  const maxRatio = Math.max(...modelsWithQuality(index).map((item) => item.frontier_ratio));
+  if (Math.abs(model.frontier_ratio - maxRatio) < 1e-9) return 'frontier';
+  if (model.frontier_ratio < state.threshold) return 'below_cutoff';
+  if (model.price_state === 'valid' && model.estimated_task_cost !== null) {
+    const frontierCosts = modelsWithQuality(index)
+      .filter((item) => Math.abs(item.frontier_ratio - maxRatio) < 1e-9 && item.estimated_task_cost !== null)
+      .map((item) => item.estimated_task_cost);
+    const frontierCost = frontierCosts.length ? Math.min(...frontierCosts) : null;
+    if (frontierCost !== null && model.estimated_task_cost < frontierCost) return 'substitute';
   }
-  const sameAsFrontier = frontier && floor.model === frontier.model;
-  if (sameAsFrontier || !isSaturatedKind(cfg.benchmark_kind)) {
-    return { benchmark, label: 'Frontier-bound', tone: 'red', action: 'frontier', copy: 'Frontier still matters', floor, frontier, cfg };
-  }
-  return { benchmark, label: 'Substitutable', tone: 'green', action: 'substitute', copy: 'Cheaper model is in band', floor, frontier, cfg };
+  return 'quality_expensive';
 }
 
-function savingsMultiple(floor, frontier) {
-  if (!floor?.input_price_per_m || !frontier?.input_price_per_m) return null;
-  return frontier.input_price_per_m / floor.input_price_per_m;
+function stateLabel(stateName) {
+  return {
+    frontier: 'Frontier context',
+    substitute: 'Substitute',
+    quality_expensive: 'Quality yes, economics no',
+    below_cutoff: 'Below cutoff',
+    unknown: 'Unknown / stale coverage',
+  }[stateName] ?? stateName;
 }
 
-function tokenStackCost(row) {
-  if (!row) return null;
-  const input = Number(row.input_price_per_m ?? 0);
-  const output = Number(row.output_price_per_m ?? 0);
-  return { input, output, total: input + output };
+function stateTone(stateName) {
+  return {
+    frontier: 'violet',
+    substitute: 'green',
+    quality_expensive: 'amber',
+    below_cutoff: 'gray',
+    unknown: 'gray',
+  }[stateName] ?? 'gray';
 }
 
-function costSavedPct(row, frontier) {
-  if (!row?.input_price_per_m || !frontier?.input_price_per_m) return null;
-  return (1 - (row.input_price_per_m / frontier.input_price_per_m)) * 100;
-}
-
-function clamp(value, min, max) {
-  return Math.min(max, Math.max(min, value));
-}
-
-function renderThresholdButtons() {
-  const markup = thresholds.map((threshold) => `
-    <button class="threshold ${threshold === state.threshold ? 'active' : ''}" data-threshold="${threshold}">${threshold} pt${threshold > 1 ? 's' : ''}</button>
+function renderIndexSelector() {
+  const select = document.getElementById('index-selector');
+  select.innerHTML = data.indexes.map((index) => `
+    <option value="${escapeHtml(index.key)}" ${index.key === state.activeIndex ? 'selected' : ''}>${escapeHtml(index.label)}</option>
   `).join('');
-  document.querySelectorAll('.threshold-control').forEach((control) => { control.innerHTML = markup; });
-  document.querySelector('.mobile-threshold').innerHTML = markup;
-  document.querySelectorAll('.threshold').forEach((button) => {
-    button.addEventListener('click', () => {
-      state.threshold = Number(button.dataset.threshold);
-      renderAll();
-    });
-  });
+  select.onchange = () => {
+    state.activeIndex = select.value;
+    renderAll();
+  };
+}
+
+function renderThresholdControl() {
+  const slider = document.getElementById('threshold-slider');
+  const value = document.getElementById('threshold-value');
+  slider.value = String(state.threshold);
+  value.textContent = pct(state.threshold, 0);
+  slider.oninput = () => {
+    state.threshold = Number(slider.value);
+    value.textContent = pct(state.threshold, 0);
+    renderAll(false);
+  };
 }
 
 function renderHeadline() {
-  const floors = benchmarks.map((benchmark) => ({ benchmark, ...substitutionStatus(benchmark) }));
-  const substitutable = floors.filter((item) => item.action === 'substitute');
-  const cheapest = substitutable
-    .map((item) => ({ ...item, price: item.floor.input_price_per_m }))
-    .sort((a, b) => a.price - b.price)[0]
-    ?? floors.map((item) => ({ ...item, price: item.floor?.input_price_per_m ?? Infinity })).sort((a, b) => a.price - b.price)[0];
-
-  document.getElementById('headline-price').textContent = cheapest?.floor ? dollars(cheapest.floor.input_price_per_m) : 'No floor';
-  document.getElementById('headline-model').textContent = cheapest?.floor
-    ? `${cheapest.floor.model} on ${cheapest.benchmark}`
-    : 'No qualifying priced rows yet.';
+  const index = activeIndex();
+  const candidates = index.models
+    .map((model) => ({ ...model, live_state: classifyForThreshold(model, index) }))
+    .filter((model) => model.live_state === 'substitute')
+    .sort((a, b) => a.estimated_task_cost - b.estimated_task_cost);
+  const best = candidates[0];
+  const complete = index.substitution_summary.complete;
+  const qualifying = index.substitution_summary.qualifying;
+  document.getElementById('headline-price').textContent = best ? money(best.estimated_task_cost) : 'No substitute yet';
+  document.getElementById('headline-model').textContent = best
+    ? `${best.model} clears ${pct(state.threshold, 0)} on ${index.label}`
+    : `${index.label} is frontier-bound at ${pct(state.threshold, 0)}.`;
   document.getElementById('headline-chips').innerHTML = [
-    `<span class="chip ${substitutable.length ? 'green' : 'red'}">${substitutable.length}/${benchmarks.length} substitutable</span>`,
-    `<span class="chip violet">${state.threshold} pt JND</span>`,
-    `<span class="chip">${floors.filter((item) => item.action === 'frontier').length} frontier-bound</span>`,
+    `<span class="chip ${best ? 'green' : 'red'}">${candidates.length} substitutes</span>`,
+    `<span class="chip violet">${qualifying}/${complete} qualify</span>`,
+    `<span class="chip">${index.substitution_summary.partial} partial coverage</span>`,
   ].join('');
 }
 
-function renderJndExplainer() {
-  const cheapest = benchmarks
-    .map((benchmark) => ({ benchmark, status: substitutionStatus(benchmark) }))
-    .filter((item) => item.status.action === 'substitute')
-    .sort((a, b) => a.status.floor.input_price_per_m - b.status.floor.input_price_per_m)[0];
-  const benchmark = cheapest?.benchmark ?? state.benchmark;
-  document.getElementById('jnd-explainer').textContent = qualificationLine(benchmark);
+function renderNoSubstituteState() {
+  const index = activeIndex();
+  const substitutes = index.models.filter((model) => classifyForThreshold(model, index) === 'substitute');
+  const callout = document.getElementById('no-substitute-state');
+  callout.hidden = substitutes.length > 0;
+  if (!substitutes.length) {
+    callout.innerHTML = `
+      <strong>No substitute yet</strong>
+      <span>${escapeHtml(index.label)} has no cheaper non-frontier model above ${pct(state.threshold, 0)}. Keep the chart: frontier-bound is useful signal.</span>
+    `;
+  }
+}
+
+function renderIndexHeroChart() {
+  const index = activeIndex();
+  const complete = modelsWithQuality(index).slice(0, 30);
+  const qualifyingCount = complete.filter((model) => model.frontier_ratio >= state.threshold).length;
+  const maxRatio = Math.max(...complete.map((model) => model.frontier_ratio), 1);
+  const bars = complete.map((model, position) => {
+    const liveState = classifyForThreshold(model, index);
+    const height = Math.max(8, (model.frontier_ratio / maxRatio) * 100);
+    const separator = position === qualifyingCount ? '<div class="vertical-separator" aria-label="Quality cutoff separator"></div>' : '';
+    return `
+      ${separator}
+      <article class="index-bar-card ${stateTone(liveState)}" title="${escapeHtml(model.model)} ${pct(model.frontier_ratio)}">
+        <div class="bar-shell"><div class="index-bar" style="--bar-size:${height}%; height:${height}%"></div></div>
+        <strong>${escapeHtml(shortName(model.model))}</strong>
+        <span class="mono">${pct(model.frontier_ratio)}</span>
+        <span class="state-text">${escapeHtml(stateLabel(liveState))}</span>
+      </article>
+    `;
+  }).join('');
+  document.getElementById('index-hero-chart').innerHTML = bars || '<p class="empty">No complete resolved scores for this index yet.</p>';
+}
+
+function shortName(name) {
+  return String(name)
+    .replace('Claude ', '')
+    .replace('Gemini ', '')
+    .replace('Preview', '')
+    .replace('Adaptive Reasoning, Max Effort', 'Max')
+    .replace('Reasoning', 'reason')
+    .trim();
 }
 
 function renderMetricStrip() {
-  const statuses = benchmarks.map((benchmark) => substitutionStatus(benchmark));
-  const substitutable = statuses.filter((status) => status.action === 'substitute');
-  const frontierBound = statuses.filter((status) => status.action === 'frontier');
-  const cheapest = substitutable.slice().sort((a, b) => a.floor.input_price_per_m - b.floor.input_price_per_m)[0];
-  const biggestSavings = substitutable
-    .map((status) => ({ status, multiple: savingsMultiple(status.floor, status.frontier) ?? 0 }))
-    .sort((a, b) => b.multiple - a.multiple)[0];
-
-  const cards = [
-    { label: 'Saturated enough', value: `${substitutable.length}/${benchmarks.length}`, copy: 'Benchmarks with a cheaper in-band floor' },
-    { label: 'Cheapest floor', value: cheapest ? dollars(cheapest.floor.input_price_per_m) : 'none', copy: cheapest ? `${shortModel(cheapest.floor.model)} · ${cheapest.benchmark}` : 'No substitutable floor' },
-    { label: 'Largest price drop', value: biggestSavings?.multiple ? `${biggestSavings.multiple.toFixed(biggestSavings.multiple >= 10 ? 0 : 1)}×` : 'none', copy: biggestSavings?.multiple ? `${biggestSavings.status.benchmark} vs frontier anchor` : `${frontierBound.length} benchmark remains frontier-bound` },
-  ];
-
-  document.getElementById('metric-strip').innerHTML = cards.map((card) => `
+  const index = activeIndex();
+  const complete = index.substitution_summary.complete;
+  const qualifying = index.substitution_summary.qualifying;
+  const substitutes = index.substitution_summary.substitutes;
+  const conflicts = index.models.reduce((sum, model) => sum + Number(model.conflict_count || 0), 0);
+  document.getElementById('metric-strip').innerHTML = [
+    { label: 'Active index', value: index.label, copy: 'One selected denominator for the hero chart' },
+    { label: 'Quality-qualified', value: `${qualifying}/${complete}`, copy: `At ${pct(state.threshold, 0)} of frontier` },
+    { label: 'Source conflicts', value: conflicts, copy: 'Preserved observations, resolved for charting' },
+  ].map((card) => `
     <article class="metric-card">
       <span class="label">${escapeHtml(card.label)}</span>
       <strong>${escapeHtml(card.value)}</strong>
@@ -227,437 +184,103 @@ function renderMetricStrip() {
   `).join('');
 }
 
-function renderStatusBoard() {
-  document.getElementById('status-board').innerHTML = benchmarks.map((benchmark) => {
-    const status = substitutionStatus(benchmark);
-    const floor = status.floor;
-    const small = smallestEquivalent(benchmark);
-    const multiple = savingsMultiple(floor, status.frontier);
-    const actionText = status.action === 'substitute' ? 'Use floor' : 'Use frontier';
-    return `
-      <article class="status-row" data-action="${status.action}">
-        <div class="status-main">
-          <strong>${escapeHtml(benchmark)}</strong>
-          <span>${escapeHtml(status.cfg.benchmark_kind.replace('_', ' '))}</span>
-        </div>
-        <div class="floor-model">
-          <span class="chip ${status.tone}">${escapeHtml(status.label)}</span>
-          <strong title="${escapeHtml(floor?.model ?? '')}">${escapeHtml(floor ? shortModel(floor.model) : 'No floor')}</strong>
-          <span class="muted">${floor ? `${pct(floor.frontier_coverage)} coverage · ${points(floor.score_gap)} gap` : 'No qualifying row'}</span>
-        </div>
-        <div class="price-stack">
-          <span class="price">${floor ? dollars(floor.input_price_per_m) : 'unknown'}</span>
-          <span class="price-caption">${multiple && multiple > 1.05 ? `${multiple.toFixed(multiple >= 10 ? 0 : 1)}× cheaper than frontier` : small ? params(small) : 'frontier anchor'}</span>
-        </div>
-        <span class="chip ${status.tone} action-badge">${actionText}</span>
-      </article>
-    `;
-  }).join('');
-}
-
-function renderPriceFloorChart() {
-  const statuses = benchmarks.map((benchmark) => ({ benchmark, ...substitutionStatus(benchmark) }));
-  const maxPrice = Math.max(...statuses.flatMap((status) => [status.floor?.input_price_per_m ?? 0, status.frontier?.input_price_per_m ?? 0]), 1);
-  const minPrice = Math.min(...statuses.flatMap((status) => [status.floor?.input_price_per_m, status.frontier?.input_price_per_m].filter(Boolean)), 0.01);
-  const logMin = Math.log10(minPrice);
-  const logMax = Math.log10(maxPrice);
-  const scale = (value) => {
-    if (!value || logMax === logMin) return 4;
-    return 4 + ((Math.log10(value) - logMin) / (logMax - logMin)) * 92;
-  };
-
-  document.getElementById('price-floor-chart').innerHTML = statuses.map((status) => {
-    const floorWidth = scale(status.floor?.input_price_per_m);
-    const frontierLeft = scale(status.frontier?.input_price_per_m);
-    const multiple = savingsMultiple(status.floor, status.frontier);
-    return `
-      <div class="price-row">
-        <div class="price-row-label">
-          <strong>${escapeHtml(status.benchmark)}</strong>
-          <span>${escapeHtml(status.label)}</span>
-        </div>
-        <div>
-          <div class="price-track" aria-label="${escapeHtml(status.benchmark)} floor ${dollars(status.floor?.input_price_per_m)} frontier ${dollars(status.frontier?.input_price_per_m)}">
-            <span class="price-fill" style="width: ${floorWidth}%"></span>
-            <span class="frontier-tick" style="left: ${frontierLeft}%"></span>
-          </div>
-          <div class="price-legend"><span>floor ${dollars(status.floor?.input_price_per_m)}</span><span>frontier ${dollars(status.frontier?.input_price_per_m)}</span></div>
-        </div>
-        <div class="savings">${multiple && multiple > 1.05 ? `${multiple.toFixed(multiple >= 10 ? 0 : 1)}× cheaper` : 'no discount'}</div>
+function renderCostRanking() {
+  const index = activeIndex();
+  const candidates = index.models
+    .map((model) => ({ ...model, live_state: classifyForThreshold(model, index) }))
+    .filter((model) => model.live_state === 'substitute')
+    .sort((a, b) => (a.estimated_task_cost ?? Number.POSITIVE_INFINITY) - (b.estimated_task_cost ?? Number.POSITIVE_INFINITY))
+    .slice(0, 12);
+  document.getElementById('cost-ranking').innerHTML = candidates.map((model) => `
+    <article class="cost-row ${stateTone(model.live_state)}">
+      <div>
+        <strong>${escapeHtml(model.model)}</strong>
+        <span>${pct(model.frontier_ratio)} frontier · ${escapeHtml(stateLabel(model.live_state))}</span>
       </div>
-    `;
-  }).join('');
+      <div class="cost-value">
+        <strong>${escapeHtml(priceLabel(model))}</strong>
+        <span>${escapeHtml(model.price_state)}</span>
+      </div>
+    </article>
+  `).join('') || '<p class="empty">No quality-qualified economic candidates at this cutoff.</p>';
 }
 
-function renderThresholdMatrix() {
-  const header = ['<div class="matrix-head">Benchmark</div>', ...thresholds.map((threshold) => `<div class="matrix-head">${threshold} pt</div>`)].join('');
-  const rows = benchmarks.map((benchmark) => {
-    const cells = thresholds.map((threshold) => {
-      const status = substitutionStatus(benchmark, threshold);
-      const floor = status.floor;
-      const cls = status.action === 'substitute' ? 'in-band' : 'frontier-only';
-      return `
-        <div class="matrix-cell ${cls} ${threshold === state.threshold ? 'active-threshold' : ''}" data-threshold-label="${threshold} pt JND">
-          <span class="chip ${status.tone}">${escapeHtml(status.label)}</span>
-          <strong>${floor ? dollars(floor.input_price_per_m) : 'none'}</strong>
-          <span>${floor ? escapeHtml(shortModel(floor.model)) : 'No priced candidate'}</span>
-        </div>
-      `;
-    }).join('');
-    return `<div class="matrix-benchmark">${escapeHtml(benchmark)}</div>${cells}`;
-  }).join('');
-  document.getElementById('threshold-matrix').innerHTML = header + rows;
-}
-
-function renderBenchmarkGuide() {
-  document.getElementById('benchmark-guide').innerHTML = benchmarks.map((benchmark) => {
-    const meta = benchmarkMeta[benchmark];
-    const rows = rowsForBenchmark(benchmark);
-    const status = substitutionStatus(benchmark);
-    return `
-      <article class="benchmark-card">
-        <div class="benchmark-card-top">
-          <h3>${escapeHtml(benchmark)}</h3>
-          <span class="chip ${status.tone}">${escapeHtml(status.label)}</span>
-        </div>
-        <p>${escapeHtml(meta.plain)}</p>
-        <div class="example-box">
-          <span class="label">Example question shape</span>
-          <p>${escapeHtml(meta.example)}</p>
-        </div>
-        <p class="muted">${escapeHtml(meta.substitution)}</p>
-        <div class="chip-row">
-          <span class="chip mono">${rows.length} rows</span>
-          <span class="chip mono">${uniqueModels(rows).length} models</span>
-          <span class="chip">${escapeHtml(meta.source)}</span>
-        </div>
-      </article>
-    `;
-  }).join('');
-}
-
-function renderBenchmarkSelect() {
-  const select = document.getElementById('benchmark-select');
-  select.innerHTML = benchmarks.map((benchmark) => `<option value="${escapeHtml(benchmark)}">${escapeHtml(benchmark)}</option>`).join('');
-  select.value = state.benchmark;
-  select.onchange = () => {
-    state.benchmark = select.value;
-    renderSelectedBenchmark();
-  };
-}
-
-function renderValueSummary() {
-  const status = substitutionStatus(state.benchmark);
-  const floor = status.floor;
-  const frontier = status.frontier;
-  const multiple = savingsMultiple(floor, frontier);
-  const saved = floor && frontier ? costSavedPct(floor, frontier) : null;
-  const cutoff = frontier ? frontier.frontier_score - state.threshold : null;
-  const cards = [
-    { label: 'Substitution floor', value: floor ? shortModel(floor.model) : 'none', copy: floor ? `${dollars(floor.input_price_per_m)} · ${points(floor.score_gap)} below frontier` : 'No qualifying priced candidate' },
-    { label: 'Cost saved', value: saved !== null ? `${Math.max(0, saved).toFixed(0)}%` : 'none', copy: multiple && multiple > 1.05 ? `${multiple.toFixed(multiple >= 10 ? 0 : 1)}× cheaper than frontier input price` : 'No cheaper in-band replacement' },
-    { label: 'Decision line', value: cutoff !== null ? `≥${pct(cutoff)}` : 'none', copy: `${state.threshold} pt JND band on ${state.benchmark}` },
-  ];
-  document.getElementById('value-summary').innerHTML = cards.map((card) => `
-    <article class="summary-card">
-      <span class="label">${escapeHtml(card.label)}</span>
-      <strong>${escapeHtml(card.value)}</strong>
-      <span class="muted">${escapeHtml(card.copy)}</span>
+function renderComponentDrilldown() {
+  const index = activeIndex();
+  const topModel = index.models.find((model) => model.coverage_state === 'complete') ?? index.models[0];
+  document.getElementById('component-drilldown').innerHTML = (topModel?.components ?? index.components).map((component) => `
+    <article class="component-card">
+      <span class="label">${escapeHtml(component.label)}</span>
+      <strong>${component.frontier_ratio === null || component.frontier_ratio === undefined ? 'unknown' : pct(component.frontier_ratio)}</strong>
+      <p>${escapeHtml(component.coverage_state ?? 'component')} · weight ${component.weight ?? 0.25}</p>
+      <div class="mini-list">
+        ${(component.benchmarks ?? []).map((benchmark) => `
+          <span>${escapeHtml(benchmark.label ?? benchmark)}${benchmark.source ? ` · ${escapeHtml(benchmark.source)}` : ''}</span>
+        `).join('')}
+      </div>
     </article>
   `).join('');
 }
 
-function renderValueMap() {
-  const rows = pricedRows(state.benchmark);
-  const frontier = frontierRow(state.benchmark);
-  if (!frontier || !rows.length) {
-    document.getElementById('value-map').innerHTML = '<p class="muted">No priced rows for this benchmark.</p>';
-    return;
+function renderSourceTransparency() {
+  const index = activeIndex();
+  const partialExamples = index.models.filter((model) => model.coverage_state !== 'complete').slice(0, 6);
+  const sources = data.source_summary.map((source) => `
+    <article class="source-card">
+      <strong>${escapeHtml(source.source)}</strong>
+      <span>${escapeHtml(source.trust_tier)} · ${source.observations} observations · ${source.fetch_runs} fetch run(s)</span>
+      <span>latest: ${escapeHtml(source.latest_fetch ?? 'unknown')}</span>
+    </article>
+  `).join('');
+  const coverage = partialExamples.map((model) => `
+    <article class="coverage-card">
+      <strong>${escapeHtml(model.model)}</strong>
+      <span>${escapeHtml(model.coverage_state)} coverage — saturated or unrefreshed rows stay unknown, not failed.</span>
+    </article>
+  `).join('');
+  const conflicts = (data.conflict_examples ?? []).slice(0, 6).map((item) => `
+    <article class="coverage-card conflict-card">
+      <strong>${escapeHtml(item.model)} · ${escapeHtml(item.benchmark_label)}</strong>
+      <span>resolved: ${escapeHtml(item.winning_source)} at ${escapeHtml(item.resolved_score)} · ${escapeHtml(item.freshness_label)}</span>
+      <span>${escapeHtml(item.conflict_count)} alternate observation(s): ${(item.observations ?? []).map((obs) => `${escapeHtml(obs.source)} ${escapeHtml(obs.score)}`).join(' / ')}</span>
+      <span>${escapeHtml(item.resolution_reason)}</span>
+    </article>
+  `).join('');
+  document.getElementById('source-transparency').innerHTML = `
+    <div class="transparency-grid">
+      <section>
+        <h3>Cache freshness</h3>
+        <p>${escapeHtml(data.cache_freshness.policy)}</p>
+        <p class="mono">latest fetch: ${escapeHtml(data.cache_freshness.latest_fetch ?? 'unknown')}</p>
+      </section>
+      <section>
+        <h3>Source mix</h3>
+        <div class="stack">${sources}</div>
+      </section>
+      <section>
+        <h3>Resolved conflicts</h3>
+        <div class="stack">${conflicts || '<p class="empty">No source conflicts in this generated payload.</p>'}</div>
+      </section>
+      <section>
+        <h3>Missing / stale coverage</h3>
+        <div class="stack">${coverage || '<p class="empty">No partial coverage examples in this selected index.</p>'}</div>
+      </section>
+    </div>
+  `;
+}
+
+function renderAll(resetControls = true) {
+  if (resetControls) {
+    renderIndexSelector();
+    renderThresholdControl();
   }
-  const cutoff = frontier.frontier_score - state.threshold;
-  const cutoffCoverage = (cutoff / frontier.frontier_score) * 100;
-  const pointsData = rows.map((row) => ({ row, saved: costSavedPct(row, frontier) ?? 0, coverage: row.frontier_coverage }));
-  const rawMinSaved = Math.min(-20, ...pointsData.map((item) => item.saved));
-  const minSaved = Math.max(-150, rawMinSaved);
-  const maxSaved = Math.max(100, ...pointsData.map((item) => item.saved));
-  const minCoverage = Math.max(0, Math.floor((Math.min(cutoffCoverage, ...pointsData.map((item) => item.coverage)) - 5) / 5) * 5);
-  const x = (saved) => clamp(((saved - minSaved) / (maxSaved - minSaved)) * 100, 0, 100);
-  const y = (coverage) => clamp(((100 - coverage) / (100 - minCoverage)) * 100, 0, 100);
-  const zeroX = x(0);
-  const cutoffY = y(cutoffCoverage);
-  const floor = cheapestEquivalent(state.benchmark);
-
-  const dots = pointsData.map(({ row, saved, coverage }) => {
-    const ok = equivalent(row);
-    const isFrontier = row.model === frontier.model;
-    const isFloor = row.model === floor?.model;
-    const label = isFloor || isFrontier ? shortModel(row.model) : '';
-    const tone = isFrontier ? 'frontier' : isFloor ? 'floor' : ok ? 'in-band' : 'out-band';
-    return `
-      <span class="value-dot ${tone}" style="left:${x(saved)}%; top:${y(coverage)}%" title="${escapeHtml(row.model)}: ${pct(coverage)} retained, ${saved.toFixed(0)}% cost saved">
-        <span class="dot-core"></span>
-        ${label ? `<span class="dot-label">${escapeHtml(label)}</span>` : ''}
-      </span>
-    `;
-  }).join('');
-
-  document.getElementById('value-map').innerHTML = `
-    <div class="safe-zone" style="left:${zeroX}%; top:0; height:${cutoffY}%;"></div>
-    <span class="cutoff-line horizontal" style="top:${cutoffY}%"><span>${pct(cutoffCoverage)} retained cutoff</span></span>
-    <span class="cutoff-line vertical" style="left:${zeroX}%"><span>no savings</span></span>
-    <div class="plot-callout"><span class="label">Selected floor</span><strong>${floor ? escapeHtml(shortModel(floor.model)) : 'none'}</strong><span>${floor ? `${dollars(floor.input_price_per_m)} · ${Math.max(0, costSavedPct(floor, frontier) ?? 0).toFixed(0)}% saved` : 'No floor'}</span></div>
-    ${dots}
-    <div class="plot-y-label">Quality retained vs frontier</div>
-    <div class="plot-x-label">Cost saved vs frontier input price</div>
-    <div class="axis-note left">${rawMinSaved < minSaved ? `≤${minSaved.toFixed(0)}%` : `${minSaved.toFixed(0)}%`}</div>
-    <div class="axis-note right">${maxSaved.toFixed(0)}%</div>
-  `;
-}
-
-function providerInitials(model) {
-  const text = String(model);
-  if (/claude|anthropic/i.test(text)) return 'A';
-  if (/gpt|o\d|openai/i.test(text)) return 'O';
-  if (/gemini|google/i.test(text)) return 'G';
-  if (/deepseek/i.test(text)) return 'D';
-  if (/qwen/i.test(text)) return 'Q';
-  if (/grok|xai/i.test(text)) return 'x';
-  if (/kimi/i.test(text)) return 'K';
-  if (/glm/i.test(text)) return 'Z';
-  if (/nemotron|nvidia/i.test(text)) return 'N';
-  return text.trim().slice(0, 1).toUpperCase();
-}
-
-function benchmarkBarLabel(model) {
-  return shortModel(model)
-    .replace('Qwen3 ', 'Qwen ')
-    .replace('DeepSeek V4 ', 'DS ')
-    .replace('Gemini ', 'Gemini ')
-    .replace('Claude ', 'Claude ')
-    .replace('Llama 3.3 ', 'Llama ')
-    .replace('Grok 3 Mini ', 'Grok ')
-    .replace('GPT-4.1 ', 'GPT-4.1 ')
-    .replace('A3B ', '')
-    .replace('A22B ', '')
-    .slice(0, 18);
-}
-
-function renderBenchmarkBars() {
-  const rows = rowsForBenchmark(state.benchmark).slice().sort((a, b) => b.score - a.score || (a.input_price_per_m ?? Infinity) - (b.input_price_per_m ?? Infinity));
-  const frontier = frontierRow(state.benchmark);
-  if (!frontier || !rows.length) {
-    document.getElementById('benchmark-bars').innerHTML = '<p class="muted">No model scores for this benchmark.</p>';
-    return;
-  }
-
-  const chartRows = rows.slice(0, 10);
-  const cutoff = frontier.frontier_score - state.threshold;
-  const minScore = Math.min(...chartRows.map((row) => row.score), cutoff);
-  const domainMin = Math.max(0, Math.floor((minScore - 5) / 5) * 5);
-  const scaleScore = (score) => clamp(((score - domainMin) / (frontier.frontier_score - domainMin)) * 100, 2, 100);
-  const cutoffHeight = scaleScore(cutoff);
-  const floor = cheapestEquivalent(state.benchmark);
-
-  const bars = chartRows.map((row, index) => {
-    const ok = equivalent(row);
-    const isFrontier = row.model === frontier.model;
-    const isFloor = row.model === floor?.model;
-    const tone = isFrontier ? 'frontier' : isFloor ? 'floor' : ok ? 'in-band' : 'out-band';
-    return `
-      <div class="bench-bar-column ${tone}" title="${escapeHtml(row.model)}: ${pct(row.score)} score, ${points(row.score_gap)} gap">
-        <div class="bench-bar-track">
-          <span class="bench-bar" style="height:${scaleScore(row.score)}%"><strong>${pct(row.score, row.score >= 10 ? 0 : 1)}</strong></span>
-        </div>
-        <span class="provider-badge">${escapeHtml(providerInitials(row.model))}</span>
-        <span class="bench-label">${escapeHtml(benchmarkBarLabel(row.model))}</span>
-      </div>
-    `;
-  }).join('');
-
-  document.getElementById('benchmark-bars').innerHTML = `
-    <div class="bench-toolbar">
-      <div class="chip-row">
-        <span class="chip mono">top ${chartRows.length} by score</span>
-        <span class="chip violet">frontier ${pct(frontier.frontier_score)}</span>
-        <span class="chip green">JND cutoff ${pct(cutoff)}</span>
-      </div>
-      <div class="curve-axis"><span>${pct(domainMin, 0)}</span><span>${escapeHtml(state.benchmark)} score</span><span>${pct(frontier.frontier_score)}</span></div>
-    </div>
-    <div class="bench-chart" style="--items:${chartRows.length}">
-      <span class="bench-cutoff" style="bottom:${98 + (cutoffHeight * 2.1)}px"><span>${state.threshold} pt cutoff</span></span>
-      ${bars}
-    </div>
-  `;
-}
-
-function renderCostEconomics() {
-  const status = substitutionStatus(state.benchmark);
-  const frontier = status.frontier;
-  const floor = status.floor;
-  const rows = pricedRows(state.benchmark)
-    .map((row) => ({ row, cost: tokenStackCost(row) }))
-    .filter((item) => item.cost && item.cost.total > 0)
-    .sort((a, b) => a.cost.total - b.cost.total || b.row.score - a.row.score)
-    .slice(0, 10);
-  if (!rows.length) {
-    document.getElementById('cost-economics').innerHTML = '<p class="muted">No cost rows for this benchmark.</p>';
-    return;
-  }
-  const maxTotal = Math.max(...rows.map((item) => item.cost.total), 1);
-  const logMax = Math.log10(maxTotal + 1);
-  document.getElementById('cost-economics').innerHTML = `
-    <div class="cost-legend"><span><i class="input-key"></i>input</span><span><i class="output-key"></i>output</span><span class="muted">sorted by blended $/1M tokens</span></div>
-    ${rows.map(({ row, cost }, index) => {
-      const totalWidth = Math.max(6, (Math.log10(cost.total + 1) / logMax) * 100);
-      const inputWidth = totalWidth * (cost.input / cost.total);
-      const outputWidth = totalWidth * (cost.output / cost.total);
-      const isFrontier = row.model === frontier?.model;
-      const isFloor = row.model === floor?.model;
-      const cls = isFrontier ? 'frontier' : isFloor ? 'floor' : equivalent(row) ? 'in-band' : 'out-band';
-      return `
-        <article class="cost-row ${escapeHtml(cls)}">
-          <div class="cost-row-head">
-            <strong>${index + 1}. ${escapeHtml(shortModel(row.model))}</strong>
-            <span>${isFrontier ? 'frontier' : isFloor ? 'floor' : equivalent(row) ? 'in band' : 'below'}</span>
-          </div>
-          <div class="cost-stack" aria-label="${escapeHtml(row.model)} input ${dollars(cost.input)} output ${dollars(cost.output)}">
-            <span class="input-seg" style="width:${inputWidth}%"></span>
-            <span class="output-seg" style="width:${outputWidth}%"></span>
-          </div>
-          <div class="cost-values"><span>${dollars(cost.input)} in</span><span>${dollars(cost.output)} out</span><strong>${dollars(cost.total)} blended</strong></div>
-        </article>
-      `;
-    }).join('')}
-    <p class="plot-footnote">Bars are log-compressed so cheap floors remain visible next to frontier pricing. This is the Artificial Analysis move re-aimed at substitution: compare the whole field first, then ask which cheap bars are inside the JND band.</p>
-  `;
-}
-
-function renderSubstitutionCurve() {
-  const rows = pricedRows(state.benchmark).slice().sort((a, b) => a.input_price_per_m - b.input_price_per_m || b.score - a.score);
-  const frontier = frontierRow(state.benchmark);
-  const cutoff = frontier ? frontier.frontier_score - state.threshold : 0;
-  const minScore = Math.min(...rows.map((row) => row.score), cutoff);
-  const domainMin = Math.max(0, Math.floor((minScore - 5) / 5) * 5);
-  const scaleScore = (score) => Math.max(0, Math.min(100, ((score - domainMin) / (100 - domainMin)) * 100));
-  const cutoffLeft = scaleScore(cutoff);
-  const cheapest = cheapestEquivalent(state.benchmark);
-
-  const bars = rows.map((row, index) => {
-    const ok = equivalent(row);
-    const isFrontier = row.model === frontier?.model;
-    const isFloor = row.model === cheapest?.model;
-    const tone = isFrontier ? 'frontier' : ok ? 'in-band' : 'out-band';
-    return `
-      <article class="curve-row ${tone} ${isFloor ? 'floor' : ''}">
-        <div class="curve-rank">${index + 1}</div>
-        <div class="curve-model">
-          <strong title="${escapeHtml(row.model)}">${escapeHtml(shortModel(row.model))}</strong>
-          <span>${dollars(row.input_price_per_m)} input · ${points(row.score_gap)} gap</span>
-        </div>
-        <div class="curve-bar-wrap" aria-label="${escapeHtml(row.model)} score ${pct(row.score)} cutoff ${pct(cutoff)}">
-          <span class="curve-jnd-zone" style="left:${cutoffLeft}%"></span>
-          <span class="curve-cutoff ${cutoffLeft > 80 ? 'label-left' : ''}" style="left:${cutoffLeft}%">${index === 0 ? `<span>${pct(cutoff)} cutoff</span>` : ''}</span>
-          <span class="curve-bar" style="width:${scaleScore(row.score)}%"></span>
-        </div>
-        <div class="curve-score">
-          <strong>${pct(row.score)}</strong>
-          <span class="chip ${ok ? 'green' : 'red'}">${isFrontier ? 'Frontier' : isFloor ? 'Floor' : ok ? 'In band' : 'Below band'}</span>
-        </div>
-      </article>
-    `;
-  }).join('');
-
-  document.getElementById('substitution-leaderboard').innerHTML = `
-    <div class="curve-toolbar">
-      <div class="chip-row">
-        <span class="chip mono">${rows.length} of ${rows.length} models</span>
-        <span class="chip violet">zoomed ${pct(domainMin, 0)}–100%</span>
-        <span class="chip green">green = substitute</span>
-      </div>
-      <div class="curve-axis"><span>${pct(domainMin, 0)}</span><span>Benchmark score</span><span>100%</span></div>
-    </div>
-    <div class="curve-list">${bars}</div>
-  `;
-}
-
-function renderObservationCards() {
-  const rows = rowsForBenchmark(state.benchmark).slice().sort((a, b) => a.score_gap - b.score_gap || (a.input_price_per_m ?? Infinity) - (b.input_price_per_m ?? Infinity));
-  document.getElementById('observation-cards').innerHTML = rows.map((row) => {
-    const ok = equivalent(row);
-    return `
-      <article class="observation-card">
-        <div>
-          <strong>${escapeHtml(row.model)}</strong>
-          <div class="observation-meta">
-            <span class="chip ${ok ? 'green' : 'red'}">${ok ? 'In band' : 'Outside band'}</span>
-            <span class="chip mono">${pct(row.score)} score</span>
-            <span class="chip mono">${points(row.score_gap)} gap</span>
-            <span class="chip mono">${dollars(row.input_price_per_m)}</span>
-          </div>
-        </div>
-        <a class="chip" href="${escapeHtml(row.source_url)}">${escapeHtml(row.source_quality)}</a>
-      </article>
-    `;
-  }).join('');
-}
-
-function renderModelUniverse() {
-  const allModels = uniqueModels();
-  const sourceCounts = countBy(observations, 'source_quality');
-  const sourceChips = Object.entries(sourceCounts)
-    .sort((a, b) => b[1] - a[1])
-    .map(([source, count]) => `<span class="chip mono">${count} ${escapeHtml(sourceLabels[source] ?? source)}</span>`)
-    .join('');
-
-  const benchmarkBlocks = benchmarks.map((benchmark) => {
-    const rows = rowsForBenchmark(benchmark);
-    const models = uniqueModels(rows);
-    const sourceMix = Object.entries(countBy(rows, 'source_quality'))
-      .sort((a, b) => b[1] - a[1])
-      .map(([source, count]) => `${count} ${source}`)
-      .join(' · ');
-    return `
-      <article class="universe-benchmark">
-        <div class="benchmark-card-top">
-          <h3>${escapeHtml(benchmark)}</h3>
-          <span class="chip mono">${models.length} models</span>
-        </div>
-        <p class="muted">${escapeHtml(sourceMix)}</p>
-        <div class="model-list">${models.map((model) => `<span>${escapeHtml(shortModel(model))}</span>`).join('')}</div>
-      </article>
-    `;
-  }).join('');
-
-  document.getElementById('model-universe').innerHTML = `
-    <div class="universe-summary">
-      <article class="summary-card"><span class="label">Observation rows</span><strong>${observations.length}</strong><span class="muted">One model score on one benchmark</span></article>
-      <article class="summary-card"><span class="label">Unique models</span><strong>${allModels.length}</strong><span class="muted">Across all MVP benchmarks</span></article>
-      <article class="summary-card"><span class="label">Scope warning</span><strong>MVP only</strong><span class="muted">Conclusions apply only to these included rows, not every model in market.</span></article>
-    </div>
-    <div class="chip-row source-row">${sourceChips}</div>
-    <div class="universe-grid">${benchmarkBlocks}</div>
-  `;
-}
-
-function renderSelectedBenchmark() {
-  renderValueSummary();
-  renderValueMap();
-  renderBenchmarkBars();
-  renderCostEconomics();
-  renderSubstitutionCurve();
-  renderObservationCards();
-}
-
-function renderAll() {
-  renderThresholdButtons();
   renderHeadline();
-  renderJndExplainer();
+  renderNoSubstituteState();
+  renderIndexHeroChart();
   renderMetricStrip();
-  renderStatusBoard();
-  renderBenchmarkGuide();
-  renderBenchmarkSelect();
-  renderModelUniverse();
-  renderSelectedBenchmark();
+  renderCostRanking();
+  renderComponentDrilldown();
+  renderSourceTransparency();
 }
 
 renderAll();

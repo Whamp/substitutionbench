@@ -6,60 +6,75 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_static_site_exposes_mobile_first_dashboard_sections() -> None:
-    html = (ROOT / "docs" / "index.html").read_text()
-
-    assert '<meta name="viewport" content="width=device-width, initial-scale=1"' in html
-    assert "Substitution floors, not leaderboards." in html
-    assert "status-board" in html
-    assert "plot deck" in html.lower()
-    assert "value-map" in html
-    assert "benchmark-bars" in html
-    assert "cost-economics" in html
-    assert "substitution-leaderboard" in html
-    assert "model-universe" in html
-    assert "JND, or just-noticeable difference" in html
-    assert "mobile-threshold" in html
-
-
-def test_static_site_javascript_does_not_classify_unsaturated_as_saturated() -> None:
-    js = (ROOT / "docs" / "app.js").read_text()
-
-    assert "kind.includes('saturated')" not in js
-    assert "kind === 'saturated' || kind === 'near_saturated'" in js
-
-
-def test_static_site_uses_visual_price_and_gap_encodings() -> None:
-    js = (ROOT / "docs" / "app.js").read_text()
-    css = (ROOT / "docs" / "styles.css").read_text()
-
-    assert "savingsMultiple" in js
-    assert "renderValueMap" in js
-    assert "renderBenchmarkBars" in js
-    assert "renderCostEconomics" in js
-    assert "renderSubstitutionCurve" in js
-    assert "renderBenchmarkGuide" in js
-    assert "renderModelUniverse" in js
-    assert "qualificationLine" in js
-    assert ".value-map" in css
-    assert ".bench-chart" in css
-    assert ".bench-bar" in css
-    assert ".safe-zone" in css
-    assert ".cost-stack" in css
-    assert ".curve-bar-wrap" in css
-    assert ".curve-cutoff" in css
-    assert ".substitution-curve" in css
-    assert ".benchmark-guide" in css
-    assert ".model-list" in css
-
-
-def test_static_site_data_matches_mvp_benchmarks() -> None:
+def load_payload() -> dict:
     data_js = (ROOT / "docs" / "data.js").read_text()
     prefix = "window.SUBSTITUTION_BENCH_DATA = "
     assert data_js.startswith(prefix)
-    payload = json.loads(data_js[len(prefix):].rstrip(";\n"))
+    return json.loads(data_js[len(prefix):].rstrip(";\n"))
 
-    assert sorted(payload["configs"]) == ["GPQA Diamond", "MATH-500", "SWE-bench Verified"]
-    assert {1, 3, 5} == set(payload["thresholds"])
-    assert any(row["model"] == "Qwen3 30B A3B Thinking" for row in payload["observations"])
-    assert any(row["model"] == "Claude Opus 4.8" for row in payload["observations"])
+
+def test_static_site_exposes_mobile_first_frontier_ratio_dashboard_sections() -> None:
+    html = (ROOT / "docs" / "index.html").read_text()
+
+    assert '<meta name="viewport" content="width=device-width, initial-scale=1"' in html
+    assert "SubstitutionBench Index v1" in html
+    assert "threshold-slider" in html
+    assert "index-selector" in html
+    assert "index-hero-chart" in html
+    assert "cost-ranking" in html
+    assert "source-transparency" in html
+    assert "No substitute yet" in html
+    assert "JND" not in html
+    assert "just-noticeable" not in html
+
+
+def test_static_site_javascript_uses_frontier_ratio_not_point_gap_language() -> None:
+    js = (ROOT / "docs" / "app.js").read_text()
+
+    assert "frontier_ratio" in js
+    assert "renderIndexHeroChart" in js
+    assert "renderCostRanking" in js
+    assert "renderSourceTransparency" in js
+    assert "renderNoSubstituteState" in js
+    assert "vertical-separator" in js
+    assert "JND" not in js
+    assert "score_gap" not in js
+    assert "frontier_score - row.score" not in js
+
+
+def test_generated_data_matches_substitutionbench_index_contract() -> None:
+    payload = load_payload()
+
+    assert payload["default_index"] == "substitutionbench-v1"
+    assert payload["default_threshold"] == 0.95
+    assert {0.9, 0.93, 0.95, 0.98} <= set(payload["thresholds"])
+
+    index = next(item for item in payload["indexes"] if item["key"] == "substitutionbench-v1")
+    assert index["label"] == "SubstitutionBench Index v1"
+    assert {component["key"] for component in index["components"]} == {"general", "math", "coding", "agentic"}
+    assert {component["weight"] for component in index["components"]} == {0.25}
+    assert all("frontier_ratio" in model for model in index["models"])
+    assert all(model["coverage_state"] in {"complete", "partial", "unknown"} for model in index["models"])
+
+
+def test_generated_data_supports_cost_provenance_conflict_and_no_substitute_states() -> None:
+    payload = load_payload()
+    text = json.dumps(payload)
+
+    assert "source_summary" in payload
+    assert "cache_freshness" in payload
+    assert "conflict_examples" in payload
+    assert "conflict_count" in text
+    assert "resolution_reason" in text
+    assert "unknown_zero" in text or "price_unknown" in text
+    assert any(index["substitution_summary"]["no_substitute"] for index in payload["indexes"])
+    assert any(model["state"] == "frontier" for index in payload["indexes"] for model in index["models"])
+    assert any(model["state"] in {"substitute", "quality_expensive", "below_cutoff"} for index in payload["indexes"] for model in index["models"])
+
+
+def test_no_credentials_or_local_cache_paths_are_emitted_to_static_assets() -> None:
+    for path in [ROOT / "docs" / "data.js", ROOT / "docs" / "app.js", ROOT / "docs" / "index.html"]:
+        text = path.read_text()
+        assert "ARTIFICIAL_ANALYSIS_API_KEY" not in text
+        assert "x-api-key" not in text
+        assert ".env" not in text
