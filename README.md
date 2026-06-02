@@ -107,6 +107,7 @@ The ceiling is bounded by the task taxonomy, not by a platonic definition of "al
 | [Sustainability via LLM Right-sizing](https://arxiv.org/abs/2504.13217) (Haase et al., 2025) | Closest concept: "When is a smaller model good enough?" 11 models, 10 occupational tasks | Academic study, not a reusable benchmark. LLM-as-judge, not human indistinguishability. Doesn't produce substitution curves. |
 | [LLMRouterBench](https://arxiv.org/abs/2601.07206) (2026) | Quality-cost Pareto frontier analysis, 400K instances, 33 models | About routing individual queries, not finding minimum sufficient model per task category. Engineering artifact, not substitution measurement. |
 | [Unified Routing & Cascading](https://arxiv.org/abs/2410.10347) (De Koninck et al., ICML 2025) | Cascade routing: 45-85% cost savings maintaining 95% quality | Engineering solution (start cheap, escalate on failure), not a benchmark measuring substitution floors. |
+| [Factory Router](https://factory.ai/news/factory-router) (Factory, 2026) | Commercial proof that per-session model routing can preserve near-frontier engineering pass rates while cutting full-session cost 20-25%; see [`docs/research/factory-router-study.md`](docs/research/factory-router-study.md) | Product/router layer, not neutral public benchmark. Terminal-Bench 2.0 is public; full Legacy-Bench is controlled/vendor-access. |
 
 **No existing benchmark measures JND-based indistinguishability between frontier and cheaper models across task categories, outputting substitution curves with per-domain substitution floors.**
 
