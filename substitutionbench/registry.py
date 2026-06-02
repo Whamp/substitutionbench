@@ -17,6 +17,19 @@ class ComponentSpec:
     benchmarks: tuple[str, ...]
 
 
+@dataclass(frozen=True)
+class BenchmarkTaskCard:
+    plain_english_task: str
+    task_class: str
+    substitution_claim_when_saturated: str
+    does_not_prove: str
+    protocol_notes: str
+    score_interpretation: str
+    score_source_url: str
+    aliases: tuple[str, ...]
+    decision_tags: tuple[str, ...]
+
+
 DEFAULT_COMPONENTS: dict[str, ComponentSpec] = {
     "general": ComponentSpec(
         key="general",
@@ -60,7 +73,293 @@ BENCHMARK_LABELS = {
     "tau2": "τ²-bench",
     "terminalbench_hard": "Terminal-Bench Hard",
     "ifbench": "IFBench",
+    "swe_bench_verified": "SWE-bench Verified",
+    "aider_polyglot": "Aider Polyglot",
+    "bigcodebench": "BigCodeBench",
+    "humaneval_plus": "HumanEval+",
+    "mbpp_plus": "MBPP+",
+    "terminal_bench": "Terminal-Bench",
 }
+
+
+def card(
+    plain_english_task: str,
+    task_class: str,
+    substitution_claim_when_saturated: str,
+    does_not_prove: str,
+    protocol_notes: str,
+    score_interpretation: str,
+    score_source_url: str,
+    aliases: tuple[str, ...],
+    decision_tags: tuple[str, ...],
+) -> BenchmarkTaskCard:
+    return BenchmarkTaskCard(
+        plain_english_task=plain_english_task,
+        task_class=task_class,
+        substitution_claim_when_saturated=substitution_claim_when_saturated,
+        does_not_prove=does_not_prove,
+        protocol_notes=protocol_notes,
+        score_interpretation=score_interpretation,
+        score_source_url=score_source_url,
+        aliases=aliases,
+        decision_tags=decision_tags,
+    )
+
+
+BENCHMARK_TASK_CARDS: dict[str, BenchmarkTaskCard] = {
+    "artificial_analysis_intelligence_index": card(
+        "Answer a broad mix of benchmark questions aggregated by Artificial Analysis.",
+        "General reasoning / knowledge aggregate",
+        "If saturated, cheaper models may handle broad routine assistant tasks, but only as a coarse screen.",
+        "Does not prove a specific task family is solved; aggregate indexes hide protocol and benchmark composition.",
+        "Aggregator field; use as source data, not as the core ontology.",
+        "Higher index score means closer to the AA aggregate frontier.",
+        "https://artificialanalysis.ai/",
+        ("general", "summary", "knowledge", "broad assistant", "routine assistant"),
+        ("answer", "mixed", "subjective", "general"),
+    ),
+    "artificial_analysis_math_index": card(
+        "Solve math benchmark tasks aggregated by Artificial Analysis.",
+        "Math / formal reasoning aggregate",
+        "If saturated, cheaper models may handle routine exact-answer math work where answers can be checked.",
+        "Does not prove open-ended proof discovery, novel research math, or messy real-world modeling.",
+        "Aggregator field; should eventually be replaced or decomposed into benchmark-first math sources.",
+        "Higher index score means closer to the AA math frontier.",
+        "https://artificialanalysis.ai/",
+        ("math", "high school math", "contest math", "formal reasoning"),
+        ("answer", "verifiable", "math", "prompt_only"),
+    ),
+    "artificial_analysis_coding_index": card(
+        "Solve coding benchmark tasks aggregated by Artificial Analysis.",
+        "Coding aggregate",
+        "If saturated, cheaper models may handle bounded programming tasks with testable outputs.",
+        "Does not prove repo editing, debugging judgment, product architecture, or agent scaffold quality.",
+        "Aggregator field; pair with benchmark-first code sources like LiveCodeBench and BigCodeBench.",
+        "Higher index score means closer to the AA coding frontier.",
+        "https://artificialanalysis.ai/",
+        ("coding", "programming", "write code", "software"),
+        ("answer", "verifiable", "coding", "prompt_only"),
+    ),
+    "livecodebench": card(
+        "Write working code for recent programming contest-style tasks.",
+        "Programming / code generation",
+        "If saturated, cheaper models can likely handle scoped algorithmic coding tasks where tests verify output.",
+        "Does not prove repo editing, production debugging, architecture judgment, or long-horizon engineering.",
+        "Generation benchmark; official rows are preferred when protocol-equivalent to aggregator rows.",
+        "Pass@1-style score; higher means more tasks solved on first attempt.",
+        "https://livecodebench.github.io/leaderboard.html",
+        ("coding", "programming", "algorithm", "write code", "leetcode", "contest coding", "python functions"),
+        ("answer", "verifiable", "coding", "prompt_only"),
+    ),
+    "gpqa": card(
+        "Answer hard graduate-level science questions.",
+        "Expert science QA",
+        "If saturated, cheaper models may handle bounded expert science QA when the question is self-contained.",
+        "Does not prove lab judgment, literature review quality, or novel scientific discovery.",
+        "Protocol variants matter; GPQA Diamond is stricter than broad GPQA variants.",
+        "Higher accuracy means more expert science questions answered correctly.",
+        "https://artificialanalysis.ai/",
+        ("science", "graduate science", "biology", "physics", "chemistry", "expert questions", "gpqa diamond"),
+        ("answer", "verifiable", "science", "prompt_only"),
+    ),
+    "hle": card(
+        "Answer extremely difficult expert questions across many domains.",
+        "Frontier expert reasoning",
+        "If saturated, cheaper models may handle some expert-answer tasks that used to require frontier models.",
+        "Does not prove reliable professional judgment or safe autonomous action.",
+        "Often useful as an unsaturated frontier stress test rather than a substitution floor.",
+        "Higher accuracy means more expert-level questions answered correctly.",
+        "https://artificialanalysis.ai/",
+        ("humanity's last exam", "hle", "expert", "hard questions", "frontier reasoning"),
+        ("answer", "verifiable", "expert", "prompt_only"),
+    ),
+    "aime": card(
+        "Solve short olympiad-style math problems with integer answers.",
+        "Contest math",
+        "If saturated, cheaper models can likely handle contest-style exact-answer math with verification.",
+        "Does not prove proofs, symbolic algebra reliability, or real-world quantitative modeling.",
+        "Saturated benchmark; stale frontier rows should not be treated as weak performance.",
+        "Higher accuracy means more AIME problems solved.",
+        "https://artificialanalysis.ai/",
+        ("aime", "olympiad", "contest math", "integer answer", "math"),
+        ("answer", "verifiable", "math", "prompt_only"),
+    ),
+    "aime_25": card(
+        "Solve current-year AIME-style math problems with integer answers.",
+        "Contest math / recent eval",
+        "If saturated, cheaper models can likely handle recent contest-style exact-answer math.",
+        "Does not prove durable math reasoning outside contest-style prompts.",
+        "More current than older AIME rows; still watch protocol and contamination risk.",
+        "Higher accuracy means more AIME 2025 problems solved.",
+        "https://artificialanalysis.ai/",
+        ("aime 2025", "aime25", "olympiad", "contest math", "math"),
+        ("answer", "verifiable", "math", "recent", "prompt_only"),
+    ),
+    "math_500": card(
+        "Solve contest-style math word problems with exact answers.",
+        "Math word problems",
+        "If saturated, cheaper models can likely handle routine contest-math style work, tutoring examples, and checked exact-answer problems.",
+        "Does not prove open-ended proof discovery or messy real-world modeling.",
+        "Saturated benchmark; useful for finding the substitution floor rather than ranking frontier models.",
+        "Higher accuracy means more exact-answer math problems solved.",
+        "https://artificialanalysis.ai/",
+        ("math-500", "math500", "math word problems", "high school math", "contest math"),
+        ("answer", "verifiable", "math", "prompt_only"),
+    ),
+    "mmlu_pro": card(
+        "Answer harder multiple-choice academic and professional knowledge questions.",
+        "Academic / professional knowledge QA",
+        "If saturated, cheaper models may handle broad exam-style knowledge questions.",
+        "Does not prove domain practice, multi-step work, or current factual freshness.",
+        "Multiple-choice benchmark; can overstate usefulness for open-ended work.",
+        "Higher accuracy means more questions answered correctly.",
+        "https://artificialanalysis.ai/",
+        ("mmlu pro", "professional knowledge", "exam questions", "knowledge"),
+        ("answer", "verifiable", "knowledge", "prompt_only"),
+    ),
+    "scicode": card(
+        "Solve scientific coding and reasoning tasks.",
+        "Scientific coding",
+        "If saturated, cheaper models may handle bounded scientific programming tasks with checkable outputs.",
+        "Does not prove research design, lab validity, or production scientific software quality.",
+        "Protocol/source details matter; inspect before making strong claims.",
+        "Higher score means more scientific coding tasks solved.",
+        "https://artificialanalysis.ai/",
+        ("scientific coding", "science code", "scicode", "research coding"),
+        ("answer", "verifiable", "science", "coding", "prompt_only"),
+    ),
+    "lcr": card(
+        "Use provided context to answer questions that require relying on source material.",
+        "Context reliance / long-context QA",
+        "If saturated, cheaper models may handle source-grounded QA and summarization where relevant context is supplied.",
+        "Does not prove retrieval quality, agent memory, or truthfulness without good source context.",
+        "Meaning depends heavily on the exact LCR protocol and context length.",
+        "Higher score means better source-grounded answer reliability under the protocol.",
+        "https://artificialanalysis.ai/",
+        ("long context", "context reliance", "source grounded", "summarization", "document qa"),
+        ("answer", "verifiable", "long_context", "prompt_only"),
+    ),
+    "tau2": card(
+        "Complete tool/API/business workflows across multiple steps.",
+        "Tool use / business workflows",
+        "If saturated, cheaper agent stacks may handle bounded API workflows with clear success checks.",
+        "Does not prove open-world autonomy, security judgment, or safe external action.",
+        "Agent scaffold and tool environment are part of the measured system.",
+        "Higher success rate means more workflows completed under the benchmark protocol.",
+        "https://artificialanalysis.ai/",
+        ("tool use", "api workflow", "business workflow", "agent", "tau2", "τ²"),
+        ("actions", "verifiable", "tool_use", "agentic"),
+    ),
+    "terminalbench_hard": card(
+        "Operate in a terminal to complete multi-step computer tasks.",
+        "Terminal / computer-use workflows",
+        "If saturated, cheaper agent stacks may handle bounded CLI, devops, install, debug, and test workflows.",
+        "Does not prove desktop UI use, safe production operations, or long-running project ownership.",
+        "Agent scaffold, shell permissions, and environment setup strongly affect results.",
+        "Higher score means more terminal tasks completed successfully.",
+        "https://artificialanalysis.ai/",
+        ("terminal", "cli", "shell", "devops", "install software", "debug", "computer use"),
+        ("actions", "verifiable", "terminal", "agentic", "environment_coupled"),
+    ),
+    "ifbench": card(
+        "Follow explicit instructions and formatting constraints.",
+        "Instruction following",
+        "If saturated, cheaper models may handle formatting, extraction, rewriting, and compliance-heavy prompt tasks.",
+        "Does not prove domain expertise, planning, or truthfulness.",
+        "Instruction-following benchmarks can be brittle; pair with real task validation.",
+        "Higher score means more instruction constraints satisfied.",
+        "https://artificialanalysis.ai/",
+        ("instruction following", "formatting", "json", "follow instructions", "ifeval", "ifbench"),
+        ("answer", "verifiable", "instruction_following", "prompt_only"),
+    ),
+}
+
+
+BENCHMARK_TASK_CARDS.update({
+    "swe_bench_verified": card(
+        "Fix real bugs in existing GitHub repositories by editing code and passing the repo tests.",
+        "Code editing / software engineering",
+        "If saturated, cheaper agent stacks may handle verified repo bug fixes with test-based validation.",
+        "Does not prove product architecture judgment, large feature work, or safe production deployment.",
+        "Agent scaffold and test harness matter; evaluate the model+agent stack, not just the base model.",
+        "Higher resolved rate means more verified GitHub issues fixed successfully.",
+        "https://www.swebench.com/",
+        ("swe bench", "swe-bench", "fix bugs", "repo bugs", "existing repo", "github issue", "patch code"),
+        ("actions", "verifiable", "code_editing", "repo_coupled", "agentic"),
+    ),
+    "aider_polyglot": card(
+        "Edit files in a codebase to satisfy requested programming changes.",
+        "Code editing / repo changes",
+        "If saturated, cheaper agent stacks may handle bounded code edits across common languages.",
+        "Does not prove full software design, requirements discovery, or release safety.",
+        "Aider results depend on edit loop, diff application, and scaffold choices.",
+        "Higher score means more code-editing tasks completed under the benchmark harness.",
+        "https://aider.chat/docs/leaderboards/",
+        ("aider", "edit code", "modify files", "codebase edit", "repo changes", "polyglot"),
+        ("actions", "verifiable", "code_editing", "repo_coupled", "agentic"),
+    ),
+    "bigcodebench": card(
+        "Write practical function-level code using libraries and realistic programming patterns.",
+        "Practical code generation",
+        "If saturated, cheaper models may handle small practical programming tasks with testable outputs.",
+        "Does not prove repo-level debugging, architecture, or long-running engineering work.",
+        "More realistic than tiny toy coding tasks but still prompt-only/function-level.",
+        "Higher pass rate means more programming tasks solved.",
+        "https://huggingface.co/spaces/bigcode/bigcodebench-leaderboard",
+        ("bigcodebench", "practical coding", "libraries", "write functions", "programming"),
+        ("answer", "verifiable", "coding", "prompt_only"),
+    ),
+    "humaneval_plus": card(
+        "Implement small Python functions from short prompts.",
+        "Small code generation",
+        "If saturated, cheaper models can likely handle toy function-writing tasks.",
+        "Does not prove practical programming, repo work, or engineering judgment.",
+        "Highly saturated; useful mainly as a low-end substitution floor.",
+        "Higher pass rate means more small Python functions pass tests.",
+        "https://evalplus.github.io/leaderboard.html",
+        ("humaneval", "humaneval+", "small python functions", "toy coding", "function specs"),
+        ("answer", "verifiable", "coding", "prompt_only"),
+    ),
+    "mbpp_plus": card(
+        "Solve short beginner-to-intermediate programming tasks.",
+        "Basic programming",
+        "If saturated, cheaper models can likely handle basic programming exercises and utility snippets.",
+        "Does not prove production software engineering or large-context debugging.",
+        "Highly saturated; use as a solved-task floor, not a frontier ranking signal.",
+        "Higher pass rate means more short programming tasks pass tests.",
+        "https://evalplus.github.io/leaderboard.html",
+        ("mbpp", "mbpp+", "basic programming", "code exercises", "python snippets"),
+        ("answer", "verifiable", "coding", "prompt_only"),
+    ),
+    "terminal_bench": card(
+        "Operate in a terminal to complete multi-step software/computer tasks.",
+        "Terminal / computer-use workflows",
+        "If saturated, cheaper agent stacks may handle bounded CLI, install, test, and debug workflows.",
+        "Does not prove safe production operations or broad desktop UI competence.",
+        "Agent scaffold, permissions, shell environment, and timeout policy matter.",
+        "Higher success rate means more terminal tasks completed successfully.",
+        "https://www.tbench.ai/",
+        ("terminal bench", "terminal", "cli", "shell", "install software", "run tests", "debug in terminal"),
+        ("actions", "verifiable", "terminal", "agentic", "environment_coupled"),
+    ),
+})
+
+
+def benchmark_task_card(key: str) -> BenchmarkTaskCard:
+    if key in BENCHMARK_TASK_CARDS:
+        return BENCHMARK_TASK_CARDS[key]
+    label = canonical_benchmark_label(key)
+    return card(
+        f"Complete the task measured by {label}.",
+        "Unclassified benchmark task",
+        "If saturated, this benchmark may indicate a substitution opportunity, but the task class needs manual review first.",
+        "Does not prove broad model quality without a plain-English task mapping and protocol review.",
+        "Unclassified benchmark metadata; review source protocol before making product claims.",
+        "Higher score is treated as better unless the benchmark metadata says otherwise.",
+        "https://artificialanalysis.ai/",
+        (label.lower(), key.replace("_", " ")),
+        ("unclassified",),
+    )
 
 AA_ENDPOINT = "https://artificialanalysis.ai/api/v2/data/llms/models"
 LIVE_CODE_BENCH_ENDPOINT = "https://livecodebench.github.io/performances_generation.json"
@@ -116,7 +415,16 @@ create table if not exists benchmarks (
   component text,
   saturation_policy text not null default 'active_or_unknown',
   source_benchmark text,
-  higher_is_better integer not null default 1
+  higher_is_better integer not null default 1,
+  plain_english_task text,
+  task_class text,
+  substitution_claim_when_saturated text,
+  does_not_prove text,
+  protocol_notes text,
+  score_interpretation text,
+  score_source_url text,
+  aliases_json text not null default '[]',
+  decision_tags_json text not null default '[]'
 );
 
 create table if not exists benchmark_observations (
@@ -191,8 +499,27 @@ create table if not exists component_benchmarks (
 
 def init_db(conn: sqlite3.Connection) -> None:
     conn.executescript(SCHEMA)
+    ensure_benchmark_metadata_columns(conn)
     ensure_index_version(conn)
     conn.commit()
+
+
+def ensure_benchmark_metadata_columns(conn: sqlite3.Connection) -> None:
+    existing = {row[1] for row in conn.execute("pragma table_info(benchmarks)").fetchall()}
+    columns = {
+        "plain_english_task": "text",
+        "task_class": "text",
+        "substitution_claim_when_saturated": "text",
+        "does_not_prove": "text",
+        "protocol_notes": "text",
+        "score_interpretation": "text",
+        "score_source_url": "text",
+        "aliases_json": "text not null default '[]'",
+        "decision_tags_json": "text not null default '[]'",
+    }
+    for name, definition in columns.items():
+        if name not in existing:
+            conn.execute(f"alter table benchmarks add column {name} {definition}")
 
 
 def now_utc() -> str:
@@ -268,16 +595,44 @@ def resolve_model_id(conn: sqlite3.Connection, source_id: int, alias: str) -> in
 
 
 def ensure_benchmark(conn: sqlite3.Connection, key: str, component: str | None = None, source_benchmark: str | None = None) -> int:
+    task_card = benchmark_task_card(key)
     conn.execute(
         """
-        insert into benchmarks(key, label, component, source_benchmark)
-        values (?, ?, ?, ?)
+        insert into benchmarks(
+          key, label, component, source_benchmark, plain_english_task, task_class,
+          substitution_claim_when_saturated, does_not_prove, protocol_notes,
+          score_interpretation, score_source_url, aliases_json, decision_tags_json
+        )
+        values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         on conflict(key) do update set
           label=excluded.label,
           component=coalesce(benchmarks.component, excluded.component),
-          source_benchmark=coalesce(benchmarks.source_benchmark, excluded.source_benchmark)
+          source_benchmark=coalesce(benchmarks.source_benchmark, excluded.source_benchmark),
+          plain_english_task=excluded.plain_english_task,
+          task_class=excluded.task_class,
+          substitution_claim_when_saturated=excluded.substitution_claim_when_saturated,
+          does_not_prove=excluded.does_not_prove,
+          protocol_notes=excluded.protocol_notes,
+          score_interpretation=excluded.score_interpretation,
+          score_source_url=excluded.score_source_url,
+          aliases_json=excluded.aliases_json,
+          decision_tags_json=excluded.decision_tags_json
         """,
-        (key, canonical_benchmark_label(key), component or component_for_benchmark(key), source_benchmark or key),
+        (
+            key,
+            canonical_benchmark_label(key),
+            component or component_for_benchmark(key),
+            source_benchmark or key,
+            task_card.plain_english_task,
+            task_card.task_class,
+            task_card.substitution_claim_when_saturated,
+            task_card.does_not_prove,
+            task_card.protocol_notes,
+            task_card.score_interpretation,
+            task_card.score_source_url,
+            json.dumps(list(task_card.aliases)),
+            json.dumps(list(task_card.decision_tags)),
+        ),
     )
     benchmark_id = int(conn.execute("select id from benchmarks where key = ?", (key,)).fetchone()[0])
     if component or component_for_benchmark(key):
@@ -695,6 +1050,128 @@ def benchmark_anchors(conn: sqlite3.Connection) -> dict[str, float]:
     return anchors
 
 
+def benchmark_substitution_candidates(conn: sqlite3.Connection, benchmark_key: str, anchors: dict[str, float], min_ratio: float = 0.90) -> tuple[list[dict[str, Any]], float | None]:
+    anchor = anchors.get(benchmark_key)
+    if not anchor:
+        return [], None
+    rows = conn.execute(
+        """
+        select br.model_id, br.resolved_score, br.conflict_count, br.reason,
+               m.canonical_name as model, m.creator_name, b.id as benchmark_id,
+               bo.freshness_label, bo.observation_kind, bo.source_url, s.name as source_name
+        from benchmark_resolutions br
+        join models m on m.id = br.model_id
+        join benchmarks b on b.id = br.benchmark_id
+        join benchmark_observations bo on bo.id = br.observation_id
+        join sources s on s.id = bo.source_id
+        where b.key = ? and br.index_version = 'substitutionbench-v1'
+        order by br.resolved_score desc, m.canonical_name
+        """,
+        (benchmark_key,),
+    ).fetchall()
+    if not rows:
+        return [], None
+
+    ranked = []
+    for position, row in enumerate(rows, start=1):
+        price = latest_pricing(conn, int(row["model_id"]))
+        cost = estimated_task_cost(price)
+        ratio = float(row["resolved_score"]) / anchor
+        ranked.append({
+            "model": row["model"],
+            "creator": row["creator_name"],
+            "rank": position,
+            "score": round(float(row["resolved_score"]), 6),
+            "frontier_anchor": round(anchor, 6),
+            "frontier_ratio": round(ratio, 6),
+            "estimated_task_cost": round(cost, 6) if cost is not None else None,
+            "price_state": price["normalized_state"] if price else "missing",
+            "source": row["source_name"],
+            "freshness_label": row["freshness_label"],
+            "observation_kind": row["observation_kind"],
+            "conflict_count": int(row["conflict_count"]),
+            "resolution_reason": row["reason"],
+        })
+
+    top_score = max(item["score"] for item in ranked)
+    frontier_costs = [item["estimated_task_cost"] for item in ranked if abs(item["score"] - top_score) < 1e-9 and item["estimated_task_cost"] is not None]
+    frontier_cost = min(frontier_costs) if frontier_costs else None
+    if frontier_cost is None:
+        return [], None
+
+    candidates = [
+        {**item, "frontier_task_cost": round(frontier_cost, 6)}
+        for item in ranked
+        if abs(item["score"] - top_score) >= 1e-9
+        and item["estimated_task_cost"] is not None
+        and item["estimated_task_cost"] < frontier_cost
+        and item["frontier_ratio"] >= min_ratio
+    ]
+    candidates.sort(key=lambda item: (item["estimated_task_cost"], -item["frontier_ratio"], item["model"]))
+    return candidates, frontier_cost
+
+
+def benchmark_floor_for_threshold(candidates: list[dict[str, Any]], threshold: float = DEFAULT_THRESHOLD) -> dict[str, Any] | None:
+    return next((candidate for candidate in candidates if candidate["frontier_ratio"] >= threshold), None)
+
+
+def benchmark_payload_entry(
+    *,
+    key: str,
+    label: str,
+    component: str | None,
+    saturation_policy: str = "active_or_unknown",
+    candidates: list[dict[str, Any]] | None = None,
+    frontier_cost: float | None = None,
+) -> dict[str, Any]:
+    task_card = benchmark_task_card(key)
+    candidates = candidates or []
+    return {
+        "key": key,
+        "label": label,
+        "component": component,
+        "saturation_policy": saturation_policy,
+        "plain_english_task": task_card.plain_english_task,
+        "task_class": task_card.task_class,
+        "substitution_claim_when_saturated": task_card.substitution_claim_when_saturated,
+        "does_not_prove": task_card.does_not_prove,
+        "protocol_notes": task_card.protocol_notes,
+        "score_interpretation": task_card.score_interpretation,
+        "score_source_url": task_card.score_source_url,
+        "aliases": list(task_card.aliases),
+        "decision_tags": list(task_card.decision_tags),
+        "frontier_task_cost": round(frontier_cost, 6) if frontier_cost is not None else None,
+        "substitution_floor": benchmark_floor_for_threshold(candidates, DEFAULT_THRESHOLD),
+        "substitution_candidates": candidates[:25],
+    }
+
+
+def dashboard_benchmarks(conn: sqlite3.Connection, anchors: dict[str, float]) -> list[dict[str, Any]]:
+    output = []
+    seen = set()
+    for row in conn.execute("select * from benchmarks order by key"):
+        candidates, frontier_cost = benchmark_substitution_candidates(conn, row["key"], anchors)
+        output.append(benchmark_payload_entry(
+            key=row["key"],
+            label=row["label"],
+            component=row["component"],
+            saturation_policy=row["saturation_policy"],
+            candidates=candidates,
+            frontier_cost=frontier_cost,
+        ))
+        seen.add(row["key"])
+    for key in sorted(set(BENCHMARK_TASK_CARDS) - seen):
+        output.append(benchmark_payload_entry(
+            key=key,
+            label=canonical_benchmark_label(key),
+            component=component_for_benchmark(key),
+            saturation_policy="source_needed",
+            candidates=[],
+            frontier_cost=None,
+        ))
+    return output
+
+
 def score_for(conn: sqlite3.Connection, model_id: int, benchmark_key: str) -> sqlite3.Row | None:
     return conn.execute(
         """
@@ -941,7 +1418,7 @@ def export_dashboard_payload(conn: sqlite3.Connection) -> dict[str, Any]:
         },
         "source_summary": source_summary(conn),
         "conflict_examples": conflict_examples(conn),
-        "benchmarks": [dict(row) for row in conn.execute("select key, label, component, saturation_policy from benchmarks order by key")],
+        "benchmarks": dashboard_benchmarks(conn, anchors),
         "indexes": [top_index, *component_indexes],
     }
 

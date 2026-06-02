@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=overflow-fix-2-20260601" />
+  <link rel="stylesheet" href="styles.css?v=task-finder-20260602" />
 </head>
 <body>
   <a class="skip-link" href="#main-content">Skip to dashboard</a>
@@ -57,6 +57,50 @@
 
     <section class="metric-strip" id="metric-strip" aria-label="Current index metrics"></section>
 
+    <section class="panel task-finder" id="task-finder" aria-labelledby="task-finder-title">
+      <div class="section-head compact">
+        <div>
+          <p class="label">Task substitution finder</p>
+          <h2 id="task-finder-title">What work can move to cheaper models?</h2>
+        </div>
+        <p class="caption">Search plain-English work or use the guided chooser. Results map tasks to benchmark evidence and cheapest qualifying floors.</p>
+      </div>
+      <div class="task-finder-grid">
+        <label class="task-search-label">Search a task
+          <input id="task-search-input" type="search" placeholder="e.g. fix bugs in an existing repo" aria-label="Search task descriptions" />
+        </label>
+        <label>Work shape
+          <select id="decision-workflow" aria-label="Select task workflow type">
+            <option value="">Any</option>
+            <option value="answer">Produces an answer</option>
+            <option value="actions">Takes actions / uses tools</option>
+          </select>
+        </label>
+        <label>Verifier
+          <select id="decision-verifier" aria-label="Select verification type">
+            <option value="">Any</option>
+            <option value="verifiable">Objective checks/tests</option>
+            <option value="subjective">Human judgment / taste</option>
+          </select>
+        </label>
+        <label>Task family
+          <select id="decision-domain" aria-label="Select task family">
+            <option value="">Any</option>
+            <option value="math">Math</option>
+            <option value="science">Science QA</option>
+            <option value="coding">Write code</option>
+            <option value="code_editing">Edit/fix repos</option>
+            <option value="terminal">Terminal work</option>
+            <option value="tool_use">Tool/API workflow</option>
+            <option value="instruction_following">Instruction following</option>
+            <option value="long_context">Source-grounded / long context</option>
+          </select>
+        </label>
+      </div>
+      <p id="task-results-summary" class="task-results-summary">Showing starting task cards. Search or choose filters to narrow the evidence.</p>
+      <div id="task-results" class="task-results" aria-live="polite"></div>
+    </section>
+
     <section class="panel" aria-labelledby="cost-title">
       <div class="section-head compact">
         <div>
@@ -97,7 +141,7 @@
     Static dashboard generated from local SQLite resolved scores. Artificial Analysis attribution: <a href="https://artificialanalysis.ai/">artificialanalysis.ai</a>.
   </footer>
 
-  <script src="data.js?v=overflow-fix-2-20260601"></script>
-  <script src="app.js?v=overflow-fix-2-20260601"></script>
+  <script src="data.js?v=task-finder-20260602"></script>
+  <script src="app.js?v=task-finder-20260602"></script>
 </body>
 </html>

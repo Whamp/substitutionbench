@@ -179,6 +179,27 @@ def test_dashboard_export_uses_resolved_scores_component_average_and_never_emits
     assert text.startswith("window.SUBSTITUTION_BENCH_DATA = ")
 
 
+def test_dashboard_export_includes_plain_english_task_cards_and_benchmark_floors(tmp_path: Path) -> None:
+    conn = make_registry(tmp_path)
+    resolve_scores(conn)
+    payload = export_dashboard_payload(conn)
+
+    benchmarks = {benchmark["key"]: benchmark for benchmark in payload["benchmarks"]}
+
+    livecodebench = benchmarks["livecodebench"]
+    assert livecodebench["plain_english_task"]
+    assert "programming" in livecodebench["task_class"].lower()
+    assert "tests" in livecodebench["substitution_claim_when_saturated"].lower()
+    assert livecodebench["does_not_prove"]
+    assert "coding" in livecodebench["aliases"]
+
+    floor = livecodebench["substitution_floor"]
+    assert floor["model"] == "Cheap Sub"
+    assert floor["frontier_ratio"] >= 0.95
+    assert floor["estimated_task_cost"] < floor["frontier_task_cost"]
+    assert livecodebench["substitution_candidates"][0]["model"] == "Cheap Sub"
+
+
 def test_livecodebench_official_rows_are_preserved_and_preferred_for_equivalent_conflicts(tmp_path: Path) -> None:
     conn = make_registry(tmp_path)
     ingest_livecodebench_payload(

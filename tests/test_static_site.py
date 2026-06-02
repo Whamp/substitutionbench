@@ -25,6 +25,9 @@ def test_static_site_exposes_mobile_first_frontier_ratio_dashboard_sections() ->
     assert "index-hero-chart" in html
     assert "cost-ranking" in html
     assert "source-transparency" in html
+    assert "task-finder" in html
+    assert "task-search-input" in html
+    assert "decision-domain" in html
     assert "No substitute yet" in html
     assert "JND" not in html
     assert "just-noticeable" not in html
@@ -37,6 +40,9 @@ def test_static_site_javascript_uses_frontier_ratio_not_point_gap_language() -> 
     assert "renderIndexHeroChart" in js
     assert "renderCostRanking" in js
     assert "renderSourceTransparency" in js
+    assert "renderTaskFinder" in js
+    assert "taskSearchMatches" in js
+    assert "decisionTreeMatches" in js
     assert "renderNoSubstituteState" in js
     assert "vertical-separator" in js
     assert "JND" not in js
@@ -143,6 +149,72 @@ def test_dashboard_recomputes_summary_counts_when_threshold_changes() -> None:
         if (!headline.includes('1 substitutes')) throw new Error('headline substitute count did not update: ' + headline);
         if (!headline.includes('2/3 qualify')) throw new Error('headline qualifying count did not update: ' + headline);
         if (!metrics.includes('2/3')) throw new Error('metric strip qualifying count did not update: ' + metrics);
+        """
+    )
+    subprocess.run(["node", "-e", script], check=True)
+
+
+def test_task_finder_search_maps_plain_english_work_to_benchmark_cards() -> None:
+    app_js = ROOT / "docs" / "app.js"
+    script = textwrap.dedent(
+        f"""
+        const fs = require('fs');
+        const vm = require('vm');
+        const elements = {{}};
+        const document = {{
+          getElementById(id) {{
+            if (!elements[id]) elements[id] = {{ innerHTML: '', textContent: '', hidden: false, value: '', oninput: null, onchange: null }};
+            return elements[id];
+          }}
+        }};
+        const payload = {{
+          default_index: 'fixture-index',
+          default_threshold: 0.95,
+          indexes: [{{ key: 'fixture-index', label: 'Fixture Index', components: [], substitution_summary: {{}}, models: [] }}],
+          benchmarks: [
+            {{
+              key: 'swe_bench_verified',
+              label: 'SWE-bench Verified',
+              task_class: 'Code editing / software engineering',
+              plain_english_task: 'Fix real bugs in existing GitHub repositories.',
+              substitution_claim_when_saturated: 'Cheaper agent stacks can handle verified repo bug fixes.',
+              does_not_prove: 'Does not prove product architecture judgment.',
+              protocol_notes: 'Agent scaffold matters.',
+              aliases: ['repo bugs', 'fix bugs', 'existing repo'],
+              decision_tags: ['actions', 'verifiable', 'code_editing', 'repo_coupled'],
+              substitution_candidates: [{{ model: 'Cheap Patch', frontier_ratio: 0.96, estimated_task_cost: 1, frontier_task_cost: 10 }}],
+              substitution_floor: {{ model: 'Cheap Patch', frontier_ratio: 0.96, estimated_task_cost: 1, frontier_task_cost: 10 }}
+            }},
+            {{
+              key: 'gpqa', label: 'GPQA', task_class: 'Science QA', plain_english_task: 'Answer hard graduate science questions.',
+              substitution_claim_when_saturated: 'Cheaper models can answer some expert science QA.', does_not_prove: 'Does not prove lab work.',
+              protocol_notes: '', aliases: ['science'], decision_tags: ['answer', 'verifiable', 'science'], substitution_candidates: [], substitution_floor: null
+            }}
+          ],
+          source_summary: [], conflict_examples: [], cache_freshness: {{ policy: 'fixture', latest_fetch: null }}
+        }};
+        const context = {{ console, window: {{ SUBSTITUTION_BENCH_DATA: payload }}, document, Number, Math }};
+        vm.createContext(context);
+        vm.runInContext(fs.readFileSync({str(app_js)!r}, 'utf8'), context);
+        const api = context.window.__SUBSTITUTION_BENCH_TEST__;
+        const searchHit = api.taskSearchMatches('fix bugs in an existing repo')[0];
+        if (searchHit.key !== 'swe_bench_verified') throw new Error('expected SWE-bench search hit, got ' + searchHit.key);
+        if (api.taskSearchMatches('make me a sandwich').length !== 0) throw new Error('irrelevant sandwich query should not produce benchmark matches');
+        api.state.decisionWorkflow = 'actions';
+        api.state.decisionDomain = 'code_editing';
+        const treeHit = api.decisionTreeMatches()[0];
+        if (treeHit.key !== 'swe_bench_verified') throw new Error('expected SWE-bench tree hit, got ' + treeHit.key);
+        api.state.decisionWorkflow = 'actions';
+        api.state.decisionDomain = 'science';
+        if (api.decisionTreeMatches().length !== 0) throw new Error('conflicting chooser tags should not return OR matches');
+        api.state.decisionWorkflow = '';
+        api.state.decisionDomain = '';
+        elements['task-search-input'].value = 'fix bugs in an existing repo';
+        api.renderTaskFinder(false);
+        const rendered = elements['task-results'].innerHTML;
+        if (!rendered.includes('SWE-bench Verified')) throw new Error('missing rendered benchmark card: ' + rendered);
+        if (!rendered.includes('Cheap Patch')) throw new Error('missing cheapest model floor: ' + rendered);
+        if (!rendered.includes('Does not prove')) throw new Error('missing caveat copy: ' + rendered);
         """
     )
     subprocess.run(["node", "-e", script], check=True)

@@ -3,6 +3,9 @@ const data = window.SUBSTITUTION_BENCH_DATA;
 const state = {
   activeIndex: data.default_index,
   threshold: data.default_threshold,
+  decisionWorkflow: '',
+  decisionVerifier: '',
+  decisionDomain: '',
 };
 
 function escapeHtml(value) {
@@ -206,6 +209,169 @@ function renderMetricStrip() {
   `).join('');
 }
 
+const SEARCH_STOPWORDS = new Set([
+  'a', 'an', 'the', 'in', 'on', 'of', 'to', 'for', 'me', 'my', 'and', 'or', 'with', 'by', 'from', 'this', 'that', 'kind', 'task', 'tasks', 'work'
+]);
+const WEAK_SEARCH_TERMS = new Set(['write', 'make', 'create', 'generate', 'answer', 'use', 'using', 'help', 'do']);
+
+function normalizeText(value) {
+  return String(value ?? '').toLowerCase().replace(/[^a-z0-9τ²]+/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function queryTerms(query) {
+  return normalizeText(query)
+    .split(' ')
+    .filter((term) => term.length >= 3 && !SEARCH_STOPWORDS.has(term));
+}
+
+function benchmarkSearchFields(benchmark) {
+  return [
+    benchmark.label,
+    benchmark.key,
+    benchmark.plain_english_task,
+    benchmark.task_class,
+    benchmark.substitution_claim_when_saturated,
+    ...(benchmark.aliases ?? []),
+    ...(benchmark.decision_tags ?? []),
+  ];
+}
+
+function benchmarkSearchTokens(benchmark) {
+  return new Set(benchmarkSearchFields(benchmark).flatMap((field) => normalizeText(field).split(' ').filter(Boolean)));
+}
+
+function benchmarkSearchText(benchmark) {
+  return normalizeText(benchmarkSearchFields(benchmark).join(' '));
+}
+
+function floorForThreshold(benchmark) {
+  const candidates = (benchmark.substitution_candidates ?? [])
+    .filter((candidate) => Number(candidate.frontier_ratio) >= state.threshold)
+    .sort((a, b) => (a.estimated_task_cost ?? Number.POSITIVE_INFINITY) - (b.estimated_task_cost ?? Number.POSITIVE_INFINITY));
+  return candidates[0] ?? null;
+}
+
+function taskSearchMatches(query) {
+  const normalized = normalizeText(query);
+  const terms = queryTerms(query);
+  if (!terms.length) return [];
+  return (data.benchmarks ?? [])
+    .map((benchmark) => {
+      const tokens = benchmarkSearchTokens(benchmark);
+      const matchedTerms = terms.filter((term) => tokens.has(term));
+      const strongMatches = matchedTerms.filter((term) => !WEAK_SEARCH_TERMS.has(term));
+      const phraseBonus = normalized.length >= 6 && benchmarkSearchText(benchmark).includes(normalized) ? 5 : 0;
+      const floorBonus = floorForThreshold(benchmark) ? 1 : 0;
+      const score = matchedTerms.length + phraseBonus + floorBonus;
+      return { benchmark, matchedTerms, strongMatches, score };
+    })
+    .filter((item) => item.strongMatches.length > 0 && (item.score >= 2 || terms.length === 1 || item.score >= 5))
+    .sort((a, b) => b.score - a.score || (floorForThreshold(b.benchmark) ? 1 : 0) - (floorForThreshold(a.benchmark) ? 1 : 0) || a.benchmark.label.localeCompare(b.benchmark.label))
+    .map((item) => item.benchmark);
+}
+
+function decisionTreeMatches() {
+  const selected = [state.decisionWorkflow, state.decisionVerifier, state.decisionDomain].filter(Boolean);
+  if (!selected.length) return [];
+  return (data.benchmarks ?? [])
+    .map((benchmark) => {
+      const tags = new Set(benchmark.decision_tags ?? []);
+      const matchesAll = selected.every((tag) => tags.has(tag));
+      return { benchmark, score: matchesAll ? selected.length : 0 };
+    })
+    .filter((item) => item.score > 0)
+    .sort((a, b) => b.score - a.score || (floorForThreshold(b.benchmark) ? 1 : 0) - (floorForThreshold(a.benchmark) ? 1 : 0) || a.benchmark.label.localeCompare(b.benchmark.label))
+    .map((item) => item.benchmark);
+}
+
+function defaultTaskMatches() {
+  return (data.benchmarks ?? [])
+    .slice()
+    .sort((a, b) => (floorForThreshold(b) ? 1 : 0) - (floorForThreshold(a) ? 1 : 0) || a.label.localeCompare(b.label))
+    .slice(0, 6);
+}
+
+function taskResultCopy(benchmark) {
+  const floor = floorForThreshold(benchmark);
+  if (floor) {
+    return `Cheapest floor at ${pct(state.threshold, 0)}: <strong>${escapeHtml(floor.model)}</strong> · ${pct(floor.frontier_ratio)} frontier · ${escapeHtml(priceLabel(floor))}`;
+  }
+  return `No cheaper model qualifies at ${pct(state.threshold, 0)} from current data.`;
+}
+
+function renderTaskCard(benchmark) {
+  const floor = floorForThreshold(benchmark);
+  const tags = (benchmark.decision_tags ?? []).slice(0, 4).map((tag) => `<span class="chip">${escapeHtml(tag.replaceAll('_', ' '))}</span>`).join('');
+  return `
+    <article class="task-card ${floor ? 'has-floor' : ''}">
+      <div class="task-card-head">
+        <div>
+          <span class="label">${escapeHtml(benchmark.task_class ?? 'Task class')}</span>
+          <h3>${escapeHtml(benchmark.label)}</h3>
+        </div>
+        <span class="chip ${floor ? 'green' : 'amber'}">${floor ? 'substitutable' : 'no floor yet'}</span>
+      </div>
+      <p><strong>Task:</strong> ${escapeHtml(benchmark.plain_english_task ?? 'Task card unavailable.')}</p>
+      <p><strong>Substitution claim:</strong> ${escapeHtml(benchmark.substitution_claim_when_saturated ?? 'Review benchmark protocol before using this as a substitution claim.')}</p>
+      <p class="floor-copy">${taskResultCopy(benchmark)}</p>
+      <p><strong>Does not prove:</strong> ${escapeHtml(benchmark.does_not_prove ?? 'Broad model capability.')}</p>
+      <p class="muted-small">${escapeHtml(benchmark.protocol_notes ?? '')}</p>
+      <div class="chip-row">${tags}</div>
+    </article>
+  `;
+}
+
+function renderTaskFinder(bindControls = true) {
+  const search = document.getElementById('task-search-input');
+  const workflow = document.getElementById('decision-workflow');
+  const verifier = document.getElementById('decision-verifier');
+  const domain = document.getElementById('decision-domain');
+  const results = document.getElementById('task-results');
+  const summary = document.getElementById('task-results-summary');
+
+  if (bindControls) {
+    workflow.value = state.decisionWorkflow;
+    verifier.value = state.decisionVerifier;
+    domain.value = state.decisionDomain;
+    search.oninput = () => renderTaskFinder(false);
+    workflow.onchange = () => { state.decisionWorkflow = workflow.value; renderTaskFinder(false); };
+    verifier.onchange = () => { state.decisionVerifier = verifier.value; renderTaskFinder(false); };
+    domain.onchange = () => { state.decisionDomain = domain.value; renderTaskFinder(false); };
+  }
+
+  const queryMatches = taskSearchMatches(search.value);
+  const treeMatches = decisionTreeMatches();
+  const hasSearch = queryTerms(search.value).length > 0;
+  const hasTree = Boolean(state.decisionWorkflow || state.decisionVerifier || state.decisionDomain);
+  let rawMatches;
+  if (hasSearch && hasTree) {
+    const allowed = new Set(treeMatches.map((benchmark) => benchmark.key));
+    rawMatches = queryMatches.filter((benchmark) => allowed.has(benchmark.key));
+  } else if (hasSearch) {
+    rawMatches = queryMatches;
+  } else if (hasTree) {
+    rawMatches = treeMatches;
+  } else {
+    rawMatches = defaultTaskMatches();
+  }
+  const seen = new Set();
+  const matches = rawMatches
+    .filter((benchmark) => {
+      if (seen.has(benchmark.key)) return false;
+      seen.add(benchmark.key);
+      return true;
+    })
+    .slice(0, 6);
+
+  results.innerHTML = matches.length
+    ? matches.map(renderTaskCard).join('')
+    : '<p class="empty">No task-class match yet. Try wording the work more concretely, like “write code”, “fix repo bugs”, or “follow JSON formatting”.</p>';
+  const hasIntent = Boolean(normalizeText(search.value)) || Boolean(state.decisionWorkflow || state.decisionVerifier || state.decisionDomain);
+  summary.textContent = matches.length
+    ? `${hasIntent ? 'Showing' : 'Starting with'} ${matches.length} task match${matches.length === 1 ? '' : 'es'}${hasIntent ? ` · best match: ${matches[0].label}` : ''}.`
+    : 'No task-class match yet.';
+}
+
 function renderCostRanking() {
   const index = activeIndex();
   const candidates = index.models
@@ -300,6 +466,7 @@ function renderAll(resetControls = true) {
   renderNoSubstituteState();
   renderIndexHeroChart();
   renderMetricStrip();
+  renderTaskFinder(resetControls);
   renderCostRanking();
   renderComponentDrilldown();
   renderSourceTransparency();
@@ -309,10 +476,13 @@ if (typeof window !== 'undefined') {
   window.__SUBSTITUTION_BENCH_TEST__ = {
     activeIndex,
     classifyForThreshold,
+    decisionTreeMatches,
     renderHeadline,
     renderMetricStrip,
+    renderTaskFinder,
     state,
     summaryForThreshold,
+    taskSearchMatches,
   };
 }
 
