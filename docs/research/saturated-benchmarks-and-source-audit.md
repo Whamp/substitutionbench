@@ -343,6 +343,449 @@ Recommendation: optional separate preference/chat basket. Do not mix into core t
 - vendor-reported benchmark claims without protocol metadata.
 - aggregate indexes that hide component/protocol details.
 
+## Benchmark task cards
+
+Every benchmark in SubstitutionBench needs a plain-English task card. The card should answer:
+
+1. What does the model actually have to do?
+2. What real-world task class does this approximate?
+3. If this benchmark is saturated, what work can probably be substituted away from frontier models?
+4. What does the benchmark **not** prove?
+
+This is not cosmetic. A benchmark score is only useful if a normal user understands the task class behind it. The dashboard should eventually expose these descriptions directly, not bury them in docs.
+
+### Proposed task-class descriptions
+
+#### MATH-500
+
+Plain English: solve contest-style math word problems with exact numerical or symbolic answers.
+
+Task class represented:
+
+- algebra, geometry, probability, number theory, and intermediate contest math;
+- careful multi-step quantitative reasoning;
+- math-answer generation where the answer can be checked exactly.
+
+If saturated, likely substitutable:
+
+- routine contest-math solving;
+- symbolic/numeric math explanations where the problem resembles known benchmark styles;
+- math-heavy tutoring examples where exact answer checking is available.
+
+Does not prove:
+
+- novel mathematical research;
+- long-horizon proof discovery;
+- messy real-world quantitative modeling;
+- reliability without answer verification.
+
+#### AIME / AIME 2025
+
+Plain English: solve short olympiad-style math problems, usually with integer answers.
+
+Task class represented:
+
+- high-school competition math;
+- compact but tricky reasoning;
+- exact-answer math with small sample size.
+
+If saturated, likely substitutable:
+
+- short competition-style math tasks;
+- checking or generating AIME-like solutions;
+- problems where the final answer can be independently verified.
+
+Does not prove:
+
+- broad mathematical competence by itself;
+- stable model quality from tiny sample sizes;
+- performance under different pass@k, tool-use, or consensus protocols unless labeled.
+
+#### GPQA / GPQA Diamond
+
+Plain English: answer very hard graduate-level science questions that are designed to fool non-experts.
+
+Task class represented:
+
+- expert scientific reasoning;
+- physics, chemistry, biology, and related domain knowledge;
+- choosing among plausible technical answers.
+
+If saturated, likely substitutable:
+
+- bounded expert-QA where answer choices are available;
+- science reasoning questions with well-specified options;
+- technical study/exam support where humans can verify sources.
+
+Does not prove:
+
+- open-ended scientific research;
+- lab planning;
+- correctness on undocumented edge cases;
+- citation-grounded answers unless retrieval is part of the task.
+
+#### MMLU-Pro
+
+Plain English: answer harder multiple-choice questions across many academic and professional subjects.
+
+Task class represented:
+
+- broad textbook knowledge;
+- professional/academic exam-style reasoning;
+- multi-domain multiple-choice QA.
+
+If saturated, likely substitutable:
+
+- broad knowledge checks;
+- classification-style expert QA;
+- exam-prep style responses where answer choices or rubrics exist.
+
+Does not prove:
+
+- open-ended writing quality;
+- fresh factual knowledge;
+- tool use;
+- deep performance in any one domain without drilldown benchmarks.
+
+#### HLE / Humanity's Last Exam
+
+Plain English: answer extremely difficult expert questions across many domains; some versions include multimodal questions.
+
+Task class represented:
+
+- frontier-bound expert reasoning;
+- obscure domain knowledge;
+- hard academic/professional questions beyond normal exam benchmarks.
+
+If saturated, likely substitutable:
+
+- probably little today; HLE is more useful as a no-substitute/frontier-bound detector.
+
+Does not prove:
+
+- everyday productivity tasks;
+- agentic tool use unless the specific HLE variant includes tools;
+- text-only vs multimodal ability unless split explicitly.
+
+#### BBH / Big-Bench Hard
+
+Plain English: solve tricky reasoning puzzles and tasks selected because earlier models struggled with them.
+
+Task class represented:
+
+- puzzle-like reasoning;
+- symbolic manipulation;
+- multi-step instruction following;
+- classic hard eval tasks.
+
+If saturated, likely substitutable:
+
+- bounded reasoning puzzles;
+- structured logic tasks;
+- older benchmark-style chain-of-thought tasks.
+
+Does not prove:
+
+- modern frontier reasoning;
+- real-world task robustness;
+- interactive tool use.
+
+#### MuSR
+
+Plain English: solve multi-step reasoning questions over longer stories or scenarios.
+
+Task class represented:
+
+- reading comprehension with hidden implications;
+- multi-hop reasoning;
+- narrative or scenario-based deduction.
+
+If saturated, likely substitutable:
+
+- moderate-length reasoning over supplied context;
+- scenario comprehension;
+- analytical reading tasks with enough context in the prompt.
+
+Does not prove:
+
+- very long-context reliability;
+- source retrieval;
+- real-world planning beyond text scenarios.
+
+#### IFEval / IFBench
+
+Plain English: follow explicit instructions and constraints exactly.
+
+Task class represented:
+
+- formatting discipline;
+- constraint obedience;
+- structured output following;
+- prompt compliance.
+
+If saturated, likely substitutable:
+
+- formatting tasks;
+- structured response generation;
+- simple assistant workflows where following constraints matters more than raw intelligence.
+
+Does not prove:
+
+- task correctness beyond following instructions;
+- reasoning depth;
+- tool use;
+- safety judgment.
+
+#### LiveCodeBench
+
+Plain English: solve recent programming contest-style coding problems by writing working code.
+
+Task class represented:
+
+- algorithmic code generation;
+- competitive-programming style reasoning;
+- translating problem statements into executable code.
+
+If saturated, likely substitutable:
+
+- well-scoped coding challenge solutions;
+- algorithmic snippets;
+- code generation where tests can verify the output.
+
+Does not prove:
+
+- editing an existing codebase;
+- debugging a large repo;
+- product engineering judgment;
+- multi-file software work.
+
+#### BigCodeBench
+
+Plain English: write functional code that uses real Python libraries and APIs, not just toy algorithms.
+
+Task class represented:
+
+- practical code generation;
+- library/API usage;
+- program synthesis with realistic dependencies;
+- domain-level coding tasks.
+
+If saturated, likely substitutable:
+
+- small utility functions;
+- library-call code snippets;
+- coding tasks with clear input/output specs and tests.
+
+Does not prove:
+
+- repo-scale software engineering;
+- architecture;
+- debugging live systems;
+- requirements clarification.
+
+#### HumanEval+ / MBPP+
+
+Plain English: write short Python functions that pass unit tests.
+
+Task class represented:
+
+- simple function synthesis;
+- basic algorithmic programming;
+- test-driven snippet completion.
+
+If saturated, likely substitutable:
+
+- small standalone coding tasks;
+- simple helper functions;
+- generated code where tests are available.
+
+Does not prove:
+
+- modern coding-agent performance;
+- repository editing;
+- ambiguous product requirements;
+- integration work.
+
+#### Aider code editing / polyglot
+
+Plain English: edit existing code according to a requested change and produce a patch in the right format.
+
+Task class represented:
+
+- code editing, not just code generation;
+- obeying diff/edit protocols;
+- modifying existing files without breaking syntax;
+- practical pair-programming style changes.
+
+If saturated, likely substitutable:
+
+- small code edits;
+- mechanical refactors;
+- patch-format workflows;
+- low-risk implementation steps with tests.
+
+Does not prove:
+
+- architecture judgment;
+- complex debugging;
+- multi-agent orchestration;
+- correctness without tests or review.
+
+#### SWE-bench Verified
+
+Plain English: fix real bugs in real GitHub repositories by producing patches that pass tests.
+
+Task class represented:
+
+- agentic software engineering;
+- repo navigation;
+- bug diagnosis;
+- patch generation;
+- test-driven repair.
+
+If saturated, likely substitutable:
+
+- only if the specific score source/scaffold is saturated. It would mean cheaper agent/model stacks can handle verified real-repo bug fixes at frontier-like rates.
+
+Does not prove:
+
+- pure base-model ability, because agent scaffold matters;
+- product sense;
+- UI taste;
+- safe autonomous merging.
+
+#### Terminal-Bench
+
+Plain English: complete tasks in a terminal environment using files, commands, scripts, tests, and shell workflows.
+
+Task class represented:
+
+- CLI tool use;
+- file-system operations;
+- environment setup;
+- data munging;
+- build/test/debug loops;
+- practical agent work on a machine.
+
+If saturated, likely substitutable:
+
+- command-line automation;
+- routine devops-like tasks;
+- scripted debugging and verification;
+- bounded terminal workflows.
+
+Does not prove:
+
+- desktop UI use;
+- long-running project planning;
+- external side-effect safety;
+- work requiring human judgment or credentials.
+
+#### τ²-bench / tau2
+
+Plain English: complete realistic tool-using assistant tasks, usually involving APIs, state, and multi-step goals.
+
+Task class represented:
+
+- function/tool calling;
+- transactional workflows;
+- multi-step assistant actions;
+- state tracking across tool calls.
+
+If saturated, likely substitutable:
+
+- bounded tool workflows;
+- API-backed assistant tasks;
+- routine transactional agents.
+
+Does not prove:
+
+- open-ended autonomy;
+- safe handling of surprising real-world side effects;
+- broad reasoning outside the task protocol.
+
+#### SciCode
+
+Plain English: solve scientific coding problems where the model must implement code for science/math-style tasks.
+
+Task class represented:
+
+- scientific programming;
+- numerical/scientific reasoning in code;
+- translating formulas or scientific tasks into executable programs.
+
+If saturated, likely substitutable:
+
+- bounded scientific scripting;
+- numeric helper programs;
+- code-backed science/math exercises.
+
+Does not prove:
+
+- scientific discovery;
+- experimental design;
+- large simulation engineering;
+- domain correctness without validation.
+
+#### LCR
+
+Plain English: code/reasoning benchmark field from Artificial Analysis that needs protocol documentation before product use.
+
+Task class represented:
+
+- currently insufficiently clear for user-facing task-class claims.
+
+If saturated, likely substitutable:
+
+- do not claim until protocol and task examples are documented.
+
+Does not prove:
+
+- anything product-facing until the benchmark definition is made explicit.
+
+#### LMArena / Arena Hard
+
+Plain English: compare model responses by preference or an automatic judge against challenging prompts.
+
+Task class represented:
+
+- chat quality;
+- helpfulness/style/preference;
+- general response quality under subjective evaluation.
+
+If saturated, likely substitutable:
+
+- chat-style assistant responses where preference quality is enough;
+- drafting, explanation, and general assistant outputs.
+
+Does not prove:
+
+- factual correctness;
+- task-specific reliability;
+- tool use;
+- math/coding correctness.
+
+### Registry fields implied by task cards
+
+Add benchmark metadata fields for:
+
+- `plain_english_task`;
+- `task_class`;
+- `substitution_claim_when_saturated`;
+- `does_not_prove`;
+- `protocol_notes`;
+- `score_interpretation`;
+- `score_source_url`.
+
+The UI should be able to render a card like:
+
+```text
+MATH-500
+Task: solve contest-style math word problems with exact answers.
+If solved: cheaper models can likely handle routine contest-math style work.
+Does not prove: open-ended proof discovery or messy real-world modeling.
+```
+
 ## Revised sub-index direction
 
 The final basket needs a data-driven pass after source extraction, but the product direction should be:
