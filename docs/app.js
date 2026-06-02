@@ -372,6 +372,80 @@ function renderTaskFinder(bindControls = true) {
     : 'No task-class match yet.';
 }
 
+function routerPolicyPoints(router) {
+  return (router?.pareto_points ?? []).slice().sort((a, b) => {
+    const policyOrder = { shipping: 0, aggressive: 1 };
+    return (policyOrder[a.policy_label] ?? 9) - (policyOrder[b.policy_label] ?? 9)
+      || a.benchmark_label.localeCompare(b.benchmark_label);
+  });
+}
+
+function sourceConfidenceLabel(value) {
+  return String(value ?? 'unknown').replaceAll('_', ' ');
+}
+
+function floorTierLabel(value) {
+  return {
+    frontier_equivalent: 'frontier-equivalent',
+    production_cost: 'production-cost',
+    aggressive_degraded: 'aggressive / degraded',
+  }[value] ?? String(value ?? 'unknown').replaceAll('_', ' ');
+}
+
+function renderRouterFrontier() {
+  const routers = data.router_policy_references ?? [];
+  const summary = document.getElementById('router-frontier-summary');
+  const chart = document.getElementById('router-frontier-chart');
+  if (!routers.length) {
+    summary.textContent = 'No router policy references in this payload yet.';
+    chart.innerHTML = '<p class="empty">Router policies need source evidence before they appear here.</p>';
+    return;
+  }
+  const cards = routers.map((router) => {
+    const points = routerPolicyPoints(router);
+    const plotDots = points.map((point) => {
+      const x = Math.max(4, Math.min(96, Number(point.relative_session_cost) * 100));
+      const y = Math.max(4, Math.min(96, Number(point.relative_pass_rate) * 100));
+      return `<span class="router-dot ${escapeHtml(point.floor_tier)}" style="--x:${x}%; --y:${y}%" aria-label="${escapeHtml(point.benchmark_label)} ${escapeHtml(point.policy_label)} ${pct(point.relative_pass_rate)} pass at ${pct(point.relative_session_cost)} cost"></span>`;
+    }).join('');
+    const pointCards = points.map((point) => {
+      const costPerSuccess = point.relative_cost_per_success === null || point.relative_cost_per_success === undefined
+        ? 'cost/success unknown'
+        : `${pct(point.relative_cost_per_success)} cost/success`;
+      return `
+        <article class="router-point ${escapeHtml(point.floor_tier)}">
+          <span class="chip ${point.floor_tier === 'aggressive_degraded' ? 'amber' : 'green'}">${escapeHtml(floorTierLabel(point.floor_tier))}</span>
+          <strong>${escapeHtml(point.benchmark_label)} · ${escapeHtml(point.policy_label)}</strong>
+          <span>${pct(point.relative_pass_rate)} pass · ${pct(point.relative_session_cost)} cost</span>
+          <span>${escapeHtml(costPerSuccess)}</span>
+        </article>
+      `;
+    }).join('');
+    return `
+      <article class="router-card">
+        <div class="task-card-head">
+          <div>
+            <span class="label">${escapeHtml(router.candidate_type)}</span>
+            <h3>${escapeHtml(router.label)}</h3>
+          </div>
+          <span class="chip violet">${escapeHtml(sourceConfidenceLabel(router.source_confidence))}</span>
+        </div>
+        <p>${escapeHtml(router.summary)}</p>
+        <div class="router-plot" role="img" aria-label="Pass rate versus full-session cost for ${escapeHtml(router.label)}">
+          <span class="axis-label y">Pass rate vs baseline</span>
+          <span class="axis-label x">Full-session cost vs baseline</span>
+          <span class="baseline-dot">100/100 baseline</span>
+          ${plotDots}
+        </div>
+        <div class="router-point-list">${pointCards}</div>
+        <p class="muted-small"><strong>Source caveat:</strong> ${escapeHtml(router.caveat)}</p>
+      </article>
+    `;
+  }).join('');
+  summary.textContent = `${routers.length} router policy reference${routers.length === 1 ? '' : 's'} · keep vendor claims separate from raw public benchmark rows.`;
+  chart.innerHTML = cards;
+}
+
 function renderCostRanking() {
   const index = activeIndex();
   const candidates = index.models
@@ -467,6 +541,7 @@ function renderAll(resetControls = true) {
   renderIndexHeroChart();
   renderMetricStrip();
   renderTaskFinder(resetControls);
+  renderRouterFrontier();
   renderCostRanking();
   renderComponentDrilldown();
   renderSourceTransparency();
@@ -480,6 +555,8 @@ if (typeof window !== 'undefined') {
     renderHeadline,
     renderMetricStrip,
     renderTaskFinder,
+    renderRouterFrontier,
+    routerPolicyPoints,
     state,
     summaryForThreshold,
     taskSearchMatches,

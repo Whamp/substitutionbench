@@ -139,6 +139,26 @@ button:focus-visible, select:focus-visible, input:focus-visible, a:focus-visible
 .task-card .floor-copy { color: #b7f6d9; }
 .muted-small { color: var(--muted) !important; font-size: 12px; }
 
+.router-frontier-chart { display: grid; gap: var(--space-3); }
+.router-card { min-width: 0; border: 1px solid var(--line); border-radius: var(--radius-md); padding: var(--space-4); background: rgba(255,255,255,0.035); }
+.router-plot { position: relative; min-height: 360px; margin: var(--space-4) 0; border: 1px solid var(--line); border-radius: var(--radius-md); overflow: hidden; background:
+  linear-gradient(90deg, rgba(255,255,255,0.055) 1px, transparent 1px) 0 0 / 25% 100%,
+  linear-gradient(0deg, rgba(255,255,255,0.055) 1px, transparent 1px) 0 0 / 100% 25%,
+  radial-gradient(circle at 82% 12%, rgba(37,192,131,0.12), transparent 18rem),
+  rgba(0,0,0,0.18);
+}
+.router-point-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); margin-bottom: var(--space-4); }
+.router-point { display: grid; gap: 4px; min-width: 0; border: 1px solid rgba(37,192,131,0.32); border-radius: var(--radius-sm); padding: var(--space-3); background: rgba(8,9,11,0.7); }
+.router-point.aggressive_degraded { border-color: rgba(247,189,77,0.38); }
+.router-point strong { font-size: 13px; }
+.router-point span:not(.chip) { color: var(--muted-strong); font-size: 12px; }
+.router-dot { position: absolute; left: var(--x); bottom: var(--y); width: 18px; height: 18px; border-radius: 999px; transform: translate(-50%, 50%); background: var(--green); box-shadow: 0 0 0 7px rgba(37,192,131,0.16), 0 0 28px rgba(37,192,131,0.45); }
+.router-dot.aggressive_degraded { background: var(--amber); box-shadow: 0 0 0 7px rgba(247,189,77,0.16), 0 0 28px rgba(247,189,77,0.38); }
+.axis-label { position: absolute; color: var(--muted); font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.055em; }
+.axis-label.y { top: var(--space-3); left: var(--space-3); }
+.axis-label.x { right: var(--space-3); bottom: var(--space-3); }
+.baseline-dot { position: absolute; right: var(--space-3); top: var(--space-3); border: 1px solid rgba(119,114,248,0.42); border-radius: 999px; padding: 5px 9px; color: #d8d6ff; background: rgba(119,114,248,0.14); font-size: 11px; }
+
 .component-drilldown { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-3); min-width: 0; }
 .component-card { border-radius: var(--radius-md); padding: var(--space-4); }
 .component-card strong { display: block; font-family: var(--mono); font-size: 28px; }
@@ -170,6 +190,9 @@ button:focus-visible, select:focus-visible, input:focus-visible, a:focus-visible
   .bar-shell { height: 18px; width: 100%; border-radius: 999px; }
   .index-bar { height: 100% !important; width: var(--bar-size); }
   .index-bar-card .state-text { grid-column: 2 / -1; min-width: 0; }
+  .router-plot { min-height: 220px; padding: var(--space-3); }
+  .router-point-list { grid-template-columns: 1fr; }
+  .axis-label, .baseline-dot { position: static; width: fit-content; }
   .vertical-separator { width: 100%; min-height: 2px; height: 2px; }
   .cost-row { align-items: start; }
 }

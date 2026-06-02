@@ -27,6 +27,8 @@ def test_static_site_exposes_mobile_first_frontier_ratio_dashboard_sections() ->
     assert "source-transparency" in html
     assert "task-finder" in html
     assert "task-search-input" in html
+    assert "router-frontier" in html
+    assert "router-frontier-chart" in html
     assert "decision-domain" in html
     assert "No substitute yet" in html
     assert "JND" not in html
@@ -41,6 +43,8 @@ def test_static_site_javascript_uses_frontier_ratio_not_point_gap_language() -> 
     assert "renderCostRanking" in js
     assert "renderSourceTransparency" in js
     assert "renderTaskFinder" in js
+    assert "renderRouterFrontier" in js
+    assert "routerPolicyPoints" in js
     assert "taskSearchMatches" in js
     assert "decisionTreeMatches" in js
     assert "renderNoSubstituteState" in js
@@ -134,6 +138,7 @@ def test_dashboard_recomputes_summary_counts_when_threshold_changes() -> None:
               {{ model: 'Cheap 89', frontier_ratio: 0.89, coverage_state: 'complete', price_state: 'valid', estimated_task_cost: 1, components: [], conflict_count: 0 }}
             ]
           }}],
+          router_policy_references: [],
           source_summary: [],
           conflict_examples: [],
           cache_freshness: {{ policy: 'fixture', latest_fetch: null }}
@@ -149,6 +154,56 @@ def test_dashboard_recomputes_summary_counts_when_threshold_changes() -> None:
         if (!headline.includes('1 substitutes')) throw new Error('headline substitute count did not update: ' + headline);
         if (!headline.includes('2/3 qualify')) throw new Error('headline qualifying count did not update: ' + headline);
         if (!metrics.includes('2/3')) throw new Error('metric strip qualifying count did not update: ' + metrics);
+        """
+    )
+    subprocess.run(["node", "-e", script], check=True)
+
+
+def test_router_frontier_renders_policy_points_and_source_confidence() -> None:
+    app_js = ROOT / "docs" / "app.js"
+    script = textwrap.dedent(
+        f"""
+        const fs = require('fs');
+        const vm = require('vm');
+        const elements = {{}};
+        const document = {{
+          getElementById(id) {{
+            if (!elements[id]) elements[id] = {{ innerHTML: '', textContent: '', hidden: false, value: '', oninput: null, onchange: null }};
+            return elements[id];
+          }}
+        }};
+        const payload = {{
+          default_index: 'fixture-index',
+          default_threshold: 0.95,
+          indexes: [{{ key: 'fixture-index', label: 'Fixture Index', components: [], substitution_summary: {{}}, models: [] }}],
+          benchmarks: [],
+          router_policy_references: [{{
+            key: 'factory_router',
+            label: 'Factory Router',
+            candidate_type: 'router_with_escalation_and_failover',
+            source_confidence: 'vendor_claim_public_aggregate',
+            summary: 'Public Factory claim on Terminal-Bench 2 and Legacy-Bench.',
+            caveat: 'Vendor aggregate only.',
+            pareto_points: [
+              {{ benchmark_key: 'terminal_bench_2', benchmark_label: 'Terminal-Bench 2', policy_label: 'shipping', relative_pass_rate: 0.99, relative_session_cost: 0.80, relative_cost_per_success: 0.805, floor_tier: 'frontier_equivalent' }},
+              {{ benchmark_key: 'legacy_bench', benchmark_label: 'Legacy-Bench', policy_label: 'aggressive', relative_pass_rate: 0.49, relative_session_cost: 0.30, relative_cost_per_success: null, floor_tier: 'aggressive_degraded' }}
+            ]
+          }}],
+          source_summary: [], conflict_examples: [], cache_freshness: {{ policy: 'fixture', latest_fetch: null }}
+        }};
+        const context = {{ console, window: {{ SUBSTITUTION_BENCH_DATA: payload }}, document, Number, Math }};
+        vm.createContext(context);
+        vm.runInContext(fs.readFileSync({str(app_js)!r}, 'utf8'), context);
+        const api = context.window.__SUBSTITUTION_BENCH_TEST__;
+        const points = api.routerPolicyPoints(payload.router_policy_references[0]);
+        if (points.length !== 2) throw new Error('expected two router policy points');
+        api.renderRouterFrontier();
+        const rendered = elements['router-frontier-chart'].innerHTML + elements['router-frontier-summary'].innerHTML;
+        if (!rendered.includes('Factory Router')) throw new Error('missing router label: ' + rendered);
+        if (!rendered.includes('Terminal-Bench 2')) throw new Error('missing benchmark point: ' + rendered);
+        if (!rendered.includes('99.0% pass')) throw new Error('missing pass label: ' + rendered);
+        if (!rendered.includes('80.5% cost/success')) throw new Error('missing cost per success: ' + rendered);
+        if (!rendered.includes('vendor claim')) throw new Error('missing source confidence caveat: ' + rendered);
         """
     )
     subprocess.run(["node", "-e", script], check=True)
@@ -191,6 +246,7 @@ def test_task_finder_search_maps_plain_english_work_to_benchmark_cards() -> None
               protocol_notes: '', aliases: ['science'], decision_tags: ['answer', 'verifiable', 'science'], substitution_candidates: [], substitution_floor: null
             }}
           ],
+          router_policy_references: [],
           source_summary: [], conflict_examples: [], cache_freshness: {{ policy: 'fixture', latest_fetch: null }}
         }};
         const context = {{ console, window: {{ SUBSTITUTION_BENCH_DATA: payload }}, document, Number, Math }};

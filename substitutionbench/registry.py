@@ -1395,6 +1395,72 @@ def conflict_examples(conn: sqlite3.Connection, limit: int = 12) -> list[dict[st
     return examples
 
 
+def router_policy_references() -> list[dict[str, Any]]:
+    """Public router-policy evidence that is not raw benchmark ingestion yet."""
+    return [
+        {
+            "key": "factory_router",
+            "label": "Factory Router",
+            "candidate_type": "router_with_escalation_and_failover",
+            "source_confidence": "vendor_claim_public_aggregate",
+            "source_url": "https://factory.ai/news/factory-router",
+            "summary": "Commercial router reference: Terminal-Bench 2 holds 99% of Claude Opus 4.7 pass rate at 80% session cost; Legacy-Bench holds 96% at 75% session cost.",
+            "caveat": "Vendor-published aggregate, not raw public per-task results. Terminal-Bench 2.0 is public; full Legacy-Bench is controlled/vendor-access.",
+            "policy_notes": [
+                "Routes each Droid session to an efficient or frontier model.",
+                "Escalates when the selected model struggles.",
+                "Fails over across providers/capacity sources when endpoints degrade.",
+            ],
+            "pareto_points": [
+                {
+                    "benchmark_key": "terminal_bench_2",
+                    "benchmark_label": "Terminal-Bench 2",
+                    "policy_label": "shipping",
+                    "relative_pass_rate": 0.99,
+                    "relative_session_cost": 0.80,
+                    "relative_cost_per_success": 0.805,
+                    "floor_tier": "frontier_equivalent",
+                    "task_count": 89,
+                    "baseline_system": "Claude Opus 4.7",
+                },
+                {
+                    "benchmark_key": "legacy_bench",
+                    "benchmark_label": "Legacy-Bench",
+                    "policy_label": "shipping",
+                    "relative_pass_rate": 0.96,
+                    "relative_session_cost": 0.75,
+                    "relative_cost_per_success": 0.780,
+                    "floor_tier": "production_cost",
+                    "task_count": None,
+                    "baseline_system": "Claude Opus 4.7",
+                },
+                {
+                    "benchmark_key": "terminal_bench_2",
+                    "benchmark_label": "Terminal-Bench 2",
+                    "policy_label": "aggressive",
+                    "relative_pass_rate": 0.81,
+                    "relative_session_cost": 0.56,
+                    "relative_cost_per_success": None,
+                    "floor_tier": "aggressive_degraded",
+                    "task_count": 89,
+                    "baseline_system": "Claude Opus 4.7",
+                },
+                {
+                    "benchmark_key": "legacy_bench",
+                    "benchmark_label": "Legacy-Bench",
+                    "policy_label": "aggressive",
+                    "relative_pass_rate": 0.49,
+                    "relative_session_cost": 0.30,
+                    "relative_cost_per_success": None,
+                    "floor_tier": "aggressive_degraded",
+                    "task_count": None,
+                    "baseline_system": "Claude Opus 4.7",
+                },
+            ],
+        }
+    ]
+
+
 def export_dashboard_payload(conn: sqlite3.Connection) -> dict[str, Any]:
     anchors = benchmark_anchors(conn)
     top_index = build_index_payload(conn, "substitutionbench-v1", "SubstitutionBench Index v1", DEFAULT_COMPONENTS.values(), anchors)
@@ -1419,6 +1485,7 @@ def export_dashboard_payload(conn: sqlite3.Connection) -> dict[str, Any]:
         "source_summary": source_summary(conn),
         "conflict_examples": conflict_examples(conn),
         "benchmarks": dashboard_benchmarks(conn, anchors),
+        "router_policy_references": router_policy_references(),
         "indexes": [top_index, *component_indexes],
     }
 

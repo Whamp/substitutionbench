@@ -200,6 +200,29 @@ def test_dashboard_export_includes_plain_english_task_cards_and_benchmark_floors
     assert livecodebench["substitution_candidates"][0]["model"] == "Cheap Sub"
 
 
+def test_dashboard_export_includes_router_policy_reference_points(tmp_path: Path) -> None:
+    conn = make_registry(tmp_path)
+    resolve_scores(conn)
+    payload = export_dashboard_payload(conn)
+
+    routers = payload["router_policy_references"]
+    factory = next(router for router in routers if router["key"] == "factory_router")
+
+    assert factory["candidate_type"] == "router_with_escalation_and_failover"
+    assert factory["source_confidence"] == "vendor_claim_public_aggregate"
+    assert "Terminal-Bench 2" in factory["summary"]
+
+    terminal = next(point for point in factory["pareto_points"] if point["benchmark_key"] == "terminal_bench_2" and point["policy_label"] == "shipping")
+    assert terminal["relative_pass_rate"] == 0.99
+    assert terminal["relative_session_cost"] == 0.80
+    assert terminal["relative_cost_per_success"] == 0.805
+    assert terminal["floor_tier"] == "frontier_equivalent"
+
+    legacy_aggressive = next(point for point in factory["pareto_points"] if point["benchmark_key"] == "legacy_bench" and point["policy_label"] == "aggressive")
+    assert legacy_aggressive["relative_pass_rate"] == 0.49
+    assert legacy_aggressive["floor_tier"] == "aggressive_degraded"
+
+
 def test_livecodebench_official_rows_are_preserved_and_preferred_for_equivalent_conflicts(tmp_path: Path) -> None:
     conn = make_registry(tmp_path)
     ingest_livecodebench_payload(
