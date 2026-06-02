@@ -786,6 +786,90 @@ If solved: cheaper models can likely handle routine contest-math style work.
 Does not prove: open-ended proof discovery or messy real-world modeling.
 ```
 
+## Substitution discovery experience
+
+The dashboard should not only rank models. It should help a buyer or builder answer a concrete question:
+
+> What kind of work can I safely move off a frontier model, and what is the cheapest model class that clears the bar?
+
+This calls for two complementary product surfaces.
+
+### 1. Task decision tree
+
+The decision tree should guide a non-benchmark expert from a plain-English task to candidate benchmarks, substitution claims, and model floors.
+
+Recommended first-pass tree:
+
+1. **Is the task mostly about producing a final answer, or taking actions?**
+   - Final answer -> go to reasoning/knowledge/math/code-generation branches.
+   - Actions -> go to code-editing, terminal, tool-use, or agentic-workflow branches.
+
+2. **Does success have an objective verifier?**
+   - Exact answer / tests / pass-fail checks -> saturated benchmarks can support strong substitution claims.
+   - Human judgment / taste / open-ended strategy -> substitution claims should be weaker and provenance-heavy.
+
+3. **What domain does the task resemble?**
+   - Math word problems -> MATH-500, AIME.
+   - Graduate science questions -> GPQA, GPQA Diamond, HLE where available.
+   - Short coding tasks -> HumanEval+, MBPP+, BigCodeBench.
+   - Recent contest-style coding -> LiveCodeBench.
+   - Editing an existing repo -> Aider, SWE-bench Verified.
+   - Terminal/computer operations -> Terminal-Bench.
+   - API/tool/business workflows -> τ²-bench.
+   - Instruction/format compliance -> IFEval/IFBench.
+   - Subjective assistant quality -> Arena / Arena Hard.
+
+4. **How much context and environment coupling is involved?**
+   - Prompt-only, no files/tools -> lower deployment risk.
+   - Existing repo, shell, APIs, multi-step state -> evaluate the agent stack, not only the base model.
+
+5. **What failure cost is acceptable?**
+   - Low-cost/verifiable failures -> use cheapest model above threshold.
+   - High-cost or hard-to-detect failures -> require margin above threshold, stronger benchmarks, or keep frontier in the loop.
+
+Decision tree output should include:
+
+- matched task class;
+- relevant benchmarks;
+- saturation state;
+- confidence level of the substitution claim;
+- cheapest model above the selected threshold;
+- what the benchmark does **not** prove;
+- recommended validation before switching production traffic.
+
+### 2. Searchable task-to-benchmark finder
+
+Users should also be able to search natural task descriptions, e.g.:
+
+- "write small Python functions from specs";
+- "fix bugs in an existing repo";
+- "answer graduate biology questions";
+- "operate a terminal to install and test software";
+- "follow exact formatting instructions".
+
+The search index should be built from benchmark metadata, not model marketing copy. Searchable fields should include:
+
+- `plain_english_task`;
+- `task_class`;
+- `substitution_claim_when_saturated`;
+- `does_not_prove`;
+- `protocol_notes`;
+- benchmark aliases and common user phrases.
+
+Search results should show benchmark cards first, then eligible model floors. The ranking should prefer task-class match quality over raw model score.
+
+### Product principle
+
+The hero question should shift from:
+
+> Which model is best?
+
+To:
+
+> For this kind of task, what is the cheapest model I can justify using?
+
+That is the actual SubstitutionBench wedge.
+
 ## Revised sub-index direction
 
 The final basket needs a data-driven pass after source extraction, but the product direction should be:
