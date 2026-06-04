@@ -168,8 +168,24 @@ def test_dashboard_export_uses_resolved_scores_component_average_and_never_emits
     assert zero["state"] == "quality_expensive"
 
     partial = next(model for model in sb_index["models"] if model["model"] == "Partial Frontier")
-    assert partial["coverage_state"] == "partial"
-    assert partial["frontier_ratio"] is None
+    assert partial["coverage_state"] == "assumed_complete"
+    assert partial["frontier_ratio"] is not None
+    assert partial["frontier_eligibility"] == {
+        "eligible": True,
+        "policy": "aa_intelligence_top3_95pct",
+        "score": 99,
+        "cutoff": 94.05,
+        "anchor": 99,
+    }
+    assumed_benchmark = next(
+        benchmark
+        for component in partial["components"]
+        for benchmark in component["benchmarks"]
+        if benchmark["coverage_state"] == "assumed"
+    )
+    assert assumed_benchmark["observation_kind"] == "assumed_frontier_anchor"
+    assert assumed_benchmark["assumption_policy"] == "aa_intelligence_top3_95pct"
+    assert assumed_benchmark["frontier_ratio"] == 1.0
 
     out = tmp_path / "data.js"
     write_dashboard_data(payload, out)

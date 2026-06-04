@@ -57,6 +57,10 @@ DEFAULT_COMPONENTS: dict[str, ComponentSpec] = {
     ),
 }
 
+FRONTIER_ASSUMPTION_POLICY = "aa_intelligence_top3_95pct"
+FRONTIER_ELIGIBILITY_BENCHMARK = "artificial_analysis_intelligence_index"
+FRONTIER_ELIGIBILITY_RATIO = 0.95
+
 BENCHMARK_LABELS = {
     "artificial_analysis_intelligence_index": "AA Intelligence Index",
     "artificial_analysis_math_index": "AA Math Index",
@@ -1186,15 +1190,58 @@ def score_for(conn: sqlite3.Connection, model_id: int, benchmark_key: str) -> sq
     ).fetchone()
 
 
-def component_result(conn: sqlite3.Connection, model_id: int, component: ComponentSpec, anchors: dict[str, float]) -> dict[str, Any]:
+def frontier_eligibility(conn: sqlite3.Connection, model_id: int, anchors: dict[str, float]) -> dict[str, Any]:
+    anchor = anchors.get(FRONTIER_ELIGIBILITY_BENCHMARK)
+    resolution = score_for(conn, model_id, FRONTIER_ELIGIBILITY_BENCHMARK)
+    if resolution is None or not anchor:
+        return {"eligible": False, "policy": FRONTIER_ASSUMPTION_POLICY, "score": None, "cutoff": None, "anchor": round(anchor, 6) if anchor else None}
+    score = float(resolution["resolved_score"])
+    cutoff = anchor * FRONTIER_ELIGIBILITY_RATIO
+    return {
+        "eligible": score >= cutoff,
+        "policy": FRONTIER_ASSUMPTION_POLICY,
+        "score": round(score, 6),
+        "cutoff": round(cutoff, 6),
+        "anchor": round(anchor, 6),
+    }
+
+
+def component_result(
+    conn: sqlite3.Connection,
+    model_id: int,
+    component: ComponentSpec,
+    anchors: dict[str, float],
+    eligibility: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     benchmark_results = []
     ratios = []
     missing = []
+    assumed = []
     conflicts = 0
     for benchmark_key in component.benchmarks:
         resolution = score_for(conn, model_id, benchmark_key)
         anchor = anchors.get(benchmark_key)
         if resolution is None or not anchor:
+            if eligibility and eligibility.get("eligible") and anchor:
+                ratios.append(1.0)
+                assumed.append(benchmark_key)
+                benchmark_results.append({
+                    "key": benchmark_key,
+                    "label": canonical_benchmark_label(benchmark_key),
+                    "coverage_state": "assumed",
+                    "score": round(anchor, 6),
+                    "frontier_anchor": round(anchor, 6),
+                    "frontier_ratio": 1.0,
+                    "source": "frontier_assumption",
+                    "freshness_label": "assumed_from_frontier_eligibility",
+                    "observation_kind": "assumed_frontier_anchor",
+                    "assumption_policy": eligibility["policy"],
+                    "resolution_reason": (
+                        f"Missing {benchmark_key} score imputed to the benchmark top-3 frontier anchor "
+                        f"because AA Intelligence Index score {eligibility['score']} cleared cutoff {eligibility['cutoff']}."
+                    ),
+                })
+                continue
             missing.append(benchmark_key)
             benchmark_results.append({
                 "key": benchmark_key,
@@ -1219,7 +1266,7 @@ def component_result(conn: sqlite3.Connection, model_id: int, component: Compone
             "resolution_reason": resolution["reason"],
         })
     if len(ratios) == len(component.benchmarks):
-        state = "complete"
+        state = "assumed_complete" if assumed else "complete"
         value = sum(ratios) / len(ratios)
     elif ratios:
         state = "partial"
@@ -1235,6 +1282,7 @@ def component_result(conn: sqlite3.Connection, model_id: int, component: Compone
         "frontier_ratio": round(value, 6) if value is not None else None,
         "benchmarks": benchmark_results,
         "missing_benchmarks": missing,
+        "assumed_benchmarks": assumed,
         "conflict_count": conflicts,
     }
 
@@ -1268,13 +1316,15 @@ def build_index_payload(conn: sqlite3.Connection, index_key: str, label: str, co
     model_rows = conn.execute("select id, canonical_name, creator_name from models order by canonical_name").fetchall()
     models = []
     for model_row in model_rows:
-        component_results = [component_result(conn, int(model_row["id"]), component, anchors) for component in component_list]
-        complete_values = [component["frontier_ratio"] for component in component_results if component["coverage_state"] == "complete"]
+        eligibility = frontier_eligibility(conn, int(model_row["id"]), anchors)
+        component_results = [component_result(conn, int(model_row["id"]), component, anchors, eligibility) for component in component_list]
+        complete_components = [component for component in component_results if component["coverage_state"] in {"complete", "assumed_complete"}]
         conflict_count = sum(int(component["conflict_count"]) for component in component_results)
-        if len(complete_values) == len(component_results):
-            frontier_ratio = sum(float(value) * component_list[i].weight for i, value in enumerate(complete_values)) / sum(c.weight for c in component_list)
-            coverage_state = "complete"
-        elif complete_values:
+        if len(complete_components) == len(component_results):
+            total_weight = sum(float(component["weight"]) for component in component_results)
+            frontier_ratio = sum(float(component["frontier_ratio"]) * float(component["weight"]) for component in component_results) / total_weight
+            coverage_state = "assumed_complete" if any(component["coverage_state"] == "assumed_complete" for component in component_results) else "complete"
+        elif complete_components:
             frontier_ratio = None
             coverage_state = "partial"
         else:
@@ -1289,6 +1339,7 @@ def build_index_payload(conn: sqlite3.Connection, index_key: str, label: str, co
             "frontier_ratio": round(frontier_ratio, 6) if frontier_ratio is not None else None,
             "coverage_state": coverage_state,
             "components": component_results,
+            "frontier_eligibility": eligibility,
             "conflict_count": conflict_count,
             "price_state": price["normalized_state"] if price else "missing",
             "input_price_per_m": price["input_price_per_m"] if price else None,
@@ -1298,8 +1349,11 @@ def build_index_payload(conn: sqlite3.Connection, index_key: str, label: str, co
         })
     classify_models(models, DEFAULT_THRESHOLD)
     models.sort(key=lambda item: (item["frontier_ratio"] is None, -(item["frontier_ratio"] or -1), item["estimated_task_cost"] is None, item["estimated_task_cost"] or 10**9, item["model"]))
+    complete_count = sum(1 for model in models if model["coverage_state"] in {"complete", "assumed_complete"})
     summary = {
-        "complete": sum(1 for model in models if model["coverage_state"] == "complete"),
+        "complete": complete_count,
+        "observed_complete": sum(1 for model in models if model["coverage_state"] == "complete"),
+        "assumed_complete": sum(1 for model in models if model["coverage_state"] == "assumed_complete"),
         "partial": sum(1 for model in models if model["coverage_state"] == "partial"),
         "unknown": sum(1 for model in models if model["coverage_state"] == "unknown"),
         "qualifying": sum(1 for model in models if model.get("frontier_ratio") is not None and model["frontier_ratio"] >= DEFAULT_THRESHOLD),

@@ -66,7 +66,7 @@ def test_generated_data_matches_substitutionbench_index_contract() -> None:
     assert {component["key"] for component in index["components"]} == {"general", "math", "coding", "agentic"}
     assert {component["weight"] for component in index["components"]} == {0.25}
     assert all("frontier_ratio" in model for model in index["models"])
-    assert all(model["coverage_state"] in {"complete", "partial", "unknown"} for model in index["models"])
+    assert all(model["coverage_state"] in {"complete", "assumed_complete", "partial", "unknown"} for model in index["models"])
     assert len(index["models"]) == index["substitution_summary"]["total_models"]
 
 

@@ -38,7 +38,7 @@ function activeIndex() {
 }
 
 function modelsWithQuality(index = activeIndex()) {
-  return index.models.filter((model) => model.frontier_ratio !== null && model.coverage_state === 'complete');
+  return index.models.filter((model) => model.frontier_ratio !== null && ['complete', 'assumed_complete'].includes(model.coverage_state));
 }
 
 function thresholdModels(index = activeIndex()) {
@@ -74,6 +74,7 @@ function summaryForThreshold(index = activeIndex()) {
   const classified = index.models.map((model) => classifyForThreshold(model, index));
   return {
     complete: completeModels.length,
+    assumed: index.models.filter((model) => model.coverage_state === 'assumed_complete').length,
     partial: index.models.filter((model) => model.coverage_state === 'partial').length,
     unknown: index.models.filter((model) => model.coverage_state === 'unknown').length,
     qualifying: completeModels.filter((model) => model.frontier_ratio >= state.threshold).length,
@@ -469,7 +470,7 @@ function renderCostRanking() {
 
 function renderComponentDrilldown() {
   const index = activeIndex();
-  const topModel = index.models.find((model) => model.coverage_state === 'complete') ?? index.models[0];
+  const topModel = modelsWithQuality(index)[0] ?? index.models[0];
   document.getElementById('component-drilldown').innerHTML = (topModel?.components ?? index.components).map((component) => `
     <article class="component-card">
       <span class="label">${escapeHtml(component.label)}</span>
@@ -486,7 +487,8 @@ function renderComponentDrilldown() {
 
 function renderSourceTransparency() {
   const index = activeIndex();
-  const partialExamples = index.models.filter((model) => model.coverage_state !== 'complete').slice(0, 6);
+  const partialExamples = index.models.filter((model) => !['complete', 'assumed_complete'].includes(model.coverage_state)).slice(0, 6);
+  const assumptionExamples = index.models.filter((model) => model.coverage_state === 'assumed_complete').slice(0, 6);
   const sources = data.source_summary.map((source) => `
     <article class="source-card">
       <strong>${escapeHtml(source.source)}</strong>
@@ -498,6 +500,12 @@ function renderSourceTransparency() {
     <article class="coverage-card">
       <strong>${escapeHtml(model.model)}</strong>
       <span>${escapeHtml(model.coverage_state)} coverage — saturated or unrefreshed rows stay unknown, not failed.</span>
+    </article>
+  `).join('');
+  const assumptions = assumptionExamples.map((model) => `
+    <article class="coverage-card">
+      <strong>${escapeHtml(model.model)}</strong>
+      <span>frontier-eligible by ${escapeHtml(model.frontier_eligibility?.policy ?? 'policy')} — missing rows are imputed to the benchmark top-3 anchor and labeled assumed.</span>
     </article>
   `).join('');
   const conflicts = (data.conflict_examples ?? []).slice(0, 6).map((item) => `
@@ -526,6 +534,10 @@ function renderSourceTransparency() {
       <section>
         <h3>Missing / stale coverage</h3>
         <div class="stack">${coverage || '<p class="empty">No partial coverage examples in this selected index.</p>'}</div>
+      </section>
+      <section>
+        <h3>Frontier assumptions</h3>
+        <div class="stack">${assumptions || '<p class="empty">No frontier-anchor imputations in this selected index.</p>'}</div>
       </section>
     </div>
   `;
