@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 import textwrap
 from pathlib import Path
@@ -31,6 +32,8 @@ def test_static_site_exposes_mobile_first_frontier_ratio_dashboard_sections() ->
     assert "router-frontier-chart" in html
     assert "decision-domain" in html
     assert "No substitute yet" in html
+    versions = re.findall(r'\b(?:href|src)="(?:styles|data|app)\.(?:css|js)\?v=([^"]+)"', html)
+    assert versions == ["hidden-state-20260604", "hidden-state-20260604", "hidden-state-20260604"]
     assert "JND" not in html
     assert "just-noticeable" not in html
 
@@ -105,6 +108,7 @@ def test_laptop_layout_constrains_wide_dashboard_sections() -> None:
     assert ".transparency-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));" in css
     assert "grid-auto-columns: minmax(72px, 1fr)" in css
     assert "overscroll-behavior-inline: contain" in css
+    assert "[hidden] { display: none !important; }" in css
     js = (ROOT / "docs" / "app.js").read_text()
     assert "function heroChartLimit()" in js
     assert "return 12;" in js
